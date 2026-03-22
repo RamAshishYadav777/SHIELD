@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 import logger from './logger';
 
 interface EmailOptions {
@@ -8,30 +8,29 @@ interface EmailOptions {
   html?: string;
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const sendEmail = async (options: EmailOptions) => {
-  if (!process.env.RESEND_API_KEY) {
-    logger.error('RESEND_API_KEY is missing. Email will not be sent.');
+  if (!process.env.SENDGRID_API_KEY) {
+    logger.error('SENDGRID_API_KEY is missing. Email will not be sent.');
     return;
   }
 
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'SHIELD Safety System <onboarding@resend.dev>',
+    await sgMail.send({
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL || 'ashisk1234567@gmail.com',
+        name: 'SHIELD Safety System'
+      },
       to: options.email,
       subject: options.subject,
+      text: options.message,
       html: options.html || `<p>${options.message}</p>`,
     });
-
-    if (error) {
-      logger.error(`Resend API error: ${error.message}`);
-      throw new Error(error.message);
-    }
-
-    logger.info(`Email sent via Resend: ${data?.id}`);
+    logger.info(`Email sent via SendGrid to ${options.email}`);
   } catch (error: any) {
-    logger.error(`Error sending email: ${error.message}`);
+    const errMsg = error?.response?.body?.errors?.[0]?.message || error.message;
+    logger.error(`Error sending email: ${errMsg}`);
     throw new Error('Email could not be sent');
   }
 };
