@@ -33,7 +33,7 @@ export const useAuth = () => {
   // explicitly returned null (logged out). Never overwrite a live user with
   // 'undefined' (which means the query is still in-flight).
   useEffect(() => {
-    if (!isLoading && userData !== undefined) {
+    if (!isLoading) {
       dispatch(setUser(userData ?? null));
     }
   }, [userData, isLoading, dispatch]);
