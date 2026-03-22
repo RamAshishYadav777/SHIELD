@@ -20,8 +20,18 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
   // Profile state
-  const [profileData, setProfileData] = useState({ name: user?.name || '', phone: user?.phone || '' });
+  const [profileData, setProfileData] = useState({ name: '', phone: '' });
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Sync profile data when user loads
+  React.useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        phone: user.phone || ''
+      });
+    }
+  }, [user]);
 
   // Security state
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });

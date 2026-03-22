@@ -165,9 +165,24 @@ export default function DashboardPage() {
 
     toast.loading('CALLING FOR HELP...', { id: 'sos-toast' });
     
+    let address = 'Current Location';
+    try {
+      // Reverse geocode to get human readable address
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${location[1]}&lon=${location[0]}&zoom=18&addressdetails=1`, {
+        headers: { 'User-Agent': 'SHIELD-Safety-App' }
+      });
+      if (geoRes.ok) {
+        const geoData = await geoRes.json();
+        address = geoData.display_name?.split(',').slice(0, 3).join(',') || 'Current Location';
+      }
+    } catch (e) {
+      console.warn('Geocoding slow or failed, using GPS only');
+    }
+
     try {
       await api.post('/sos/trigger', {
         coordinates: location,
+        address,
         message: 'URGENT: I need help right now!'
       });
       toast.success('HELP SIGNAL SENT!', { id: 'sos-toast', duration: 5000, icon: '🚨' });

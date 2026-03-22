@@ -6,6 +6,7 @@ export interface ISOS extends Document {
     type: string;
     coordinates: number[];
   };
+  address?: string;
   status: 'active' | 'resolved';
   resolvedAt?: Date;
   message: string;
@@ -27,6 +28,9 @@ const sosSchema: Schema<ISOS> = new mongoose.Schema({
       type: [Number],
       required: true
     }
+  },
+  address: {
+    type: String
   },
   status: {
     type: String,

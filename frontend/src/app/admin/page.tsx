@@ -5,31 +5,58 @@ import { motion } from 'framer-motion';
 import {
   Users, AlertTriangle, Activity,
   Zap, ArrowRight,
-  Shield
+  Shield, Copy, Check
 } from 'lucide-react';
 import { Card } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/lib/api';
 import Link from 'next/link';
+import { useSocket } from '@/hooks/useSocket';
+import toast from 'react-hot-toast';
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth();
+  const { socket } = useSocket();
   const [stats, setStats] = useState({
     totalUsers: 0, totalIncidents: 0, verifiedIncidents: 0, 
     totalSOS: 0, totalSafeZones: 0, totalRevenue: 0
   });
   const [recentIncidents, setRecentIncidents] = useState<any[]>([]);
+  const [recentSOS, setRecentSOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchAll();
+    
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(fetchAll, 60000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Listen for real-time SOS and incidents
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRealtimeUpdate = () => {
+      console.log('Real-time alert received, refreshing dashboard stats...');
+      fetchAll();
+    };
+
+    socket.on('system-alert', handleRealtimeUpdate);
+    socket.on('new-sos', handleRealtimeUpdate);
+    socket.on('incident-update', handleRealtimeUpdate);
+
+    return () => {
+      socket.off('system-alert', handleRealtimeUpdate);
+      socket.off('new-sos', handleRealtimeUpdate);
+      socket.off('incident-update', handleRealtimeUpdate);
+    };
+  }, [socket]);
 
   const fetchAll = async () => {
     try {
       const [incRes, sosRes, zoneRes, userRes, payRes] = await Promise.all([
         api.get('/incidents').catch(() => ({ data: { data: [] } })),
-        api.get('/sos/history').catch(() => ({ data: { data: [] } })),
+        api.get('/sos/admin/history').catch(() => ({ data: { data: [] } })),
         api.get('/safezones/nearby?lng=0&lat=0&distance=999999').catch(() => ({ data: { count: 0 } })),
         api.get('/users/admin/all').catch(() => ({ data: { count: 0, data: [] } })),
         api.get('/payments/admin/all').catch(() => ({ data: { data: [], totalAmount: 0 } })),
@@ -50,12 +77,22 @@ export default function AdminDashboardPage() {
       });
 
       setRecentIncidents(incidents.slice(0, 5));
+      setRecentSOS(sosList.slice(0, 5));
     } catch (e) {
       console.error('Admin dashboard fetch failed');
     } finally {
       setLoading(false);
     }
   };
+
+  // Merge incidents and SOS triggers for the pulse feed
+  const pulseFeed = useMemo(() => {
+    const items = [
+      ...recentIncidents.map(inc => ({ ...inc, feedType: 'incident' })),
+      ...recentSOS.map(sos => ({ ...sos, feedType: 'sos', title: `SOS: ${sos.user?.name || 'Unknown User'}` }))
+    ];
+    return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
+  }, [recentIncidents, recentSOS]);
 
   const dashboardStats = useMemo(() => [
     { label: 'Active Incidents', value: stats.totalIncidents, icon: AlertTriangle, color: 'from-accent-orange/20 to-accent-orange/5', iconColor: 'text-accent-orange' },
@@ -79,7 +116,9 @@ export default function AdminDashboardPage() {
                 <span className="text-sm font-semibold text-text-secondary">System Live</span>
             </div>
             <div className="h-4 w-px bg-white/10" />
-            <span className="text-sm font-semibold text-white/80">Last Sync: {new Date().toLocaleTimeString()}</span>
+            <span className="text-sm font-semibold text-white/80">
+              Last Sync: {pulseFeed[0] ? new Date(pulseFeed[0].createdAt).toLocaleTimeString() : new Date().toLocaleTimeString()}
+            </span>
         </div>
       </div>
 
@@ -109,33 +148,108 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* Recent Incidents */}
+      {/* ── LIVE SOS ACTIVITY ── */}
+      <Card className="p-0 border-red-500/20 overflow-hidden rounded-[2.5rem] bg-red-900/5 backdrop-blur-xl shadow-2xl relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl pointer-events-none" />
+          <div className="p-6 border-b border-red-500/10 flex items-center justify-between bg-red-500/5">
+              <h2 className="text-lg font-bold flex items-center gap-3 text-red-500">
+                 <div className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                 LIVE SOS ACTIVITY
+              </h2>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500/60 leading-none">Emergency Channel</span>
+          </div>
+          <div className="divide-y divide-white/5">
+              {recentSOS.map((sos) => (
+                  <div key={sos._id} className="p-6 flex items-center justify-between group hover:bg-white/[0.02] transition-colors border-l-4 border-transparent hover:border-red-500">
+                      <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+                              <Activity size={24} />
+                          </div>
+                          <div>
+                              <p className="font-black text-white uppercase tracking-tight italic text-xl leading-none">
+                                SOS: <span className="text-red-500">{sos.user?.name || 'Unknown User'}</span>
+                              </p>
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className="text-[10px] text-red-500/60 font-black uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded-md border border-red-500/10">Live Emergency</span>
+                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest italic leading-none">• {new Date(sos.createdAt).toLocaleString()}</span>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* TACTICAL LOCATION DATA */}
+                      <div className="flex items-center gap-3 ml-auto">
+                          {(sos.address || sos.location?.address) && (
+                              <div className="flex items-center gap-2 text-xs font-black text-white bg-white/10 px-4 py-2 rounded-xl border border-white/10 shadow-xl">
+                                  <span className="opacity-40 uppercase italic text-[10px]">Loc</span>
+                                  {sos.address || sos.location.address}
+                              </div>
+                          )}
+                          <div className="flex items-center gap-0.5 group/copy relative shadow-xl">
+                              <div className="flex items-center gap-2 text-xs font-mono font-black text-white bg-white/10 px-4 py-2 rounded-l-xl border border-white/10 border-r-0">
+                                  <span className="opacity-40 uppercase text-[10px]">GPS</span>
+                                  {sos.location?.coordinates[1]?.toFixed(6)}, {sos.location?.coordinates[0]?.toFixed(6)}
+                              </div>
+                              <button 
+                                  onClick={() => {
+                                      const coords = `${sos.location?.coordinates[1]},${sos.location?.coordinates[0]}`;
+                                      navigator.clipboard.writeText(coords);
+                                      toast.success('Coordinates copied!', {
+                                          style: { background: '#171717', color: '#ef4444', border: '1px solid #ef4444', fontWeight: 'bold' }
+                                      });
+                                  }}
+                                  className="p-2.5 bg-white/20 border border-white/10 rounded-r-xl text-white hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                                  title="Copy Coordinates"
+                              >
+                                  <Copy size={14} />
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              ))}
+              {recentSOS.length === 0 && !loading && (
+                 <div className="p-12 text-center text-neutral-600 text-[10px] font-black uppercase tracking-[0.3em] font-mono italic">No active SOS signals monitored.</div>
+              )}
+          </div>
+      </Card>
+
+      {/* ── SECURITY INCIDENT PULSE ── */}
       <Card className="p-0 border-white/10 overflow-hidden rounded-[2.5rem] bg-neutral-900/40 backdrop-blur-xl shadow-2xl">
           <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                 <Shield className="text-accent-orange" size={20} /> Security Incident Pulse
+              <h2 className="text-lg font-bold flex items-center gap-2 uppercase tracking-tight">
+                 <Shield className="text-accent-orange" size={20} /> Security <span className="text-neutral-500">Incident Pulse</span>
               </h2>
-              <Link href="/admin/incidents" className="text-sm font-semibold text-accent-orange hover:text-white transition-colors flex items-center gap-1">
-                View all reports <ArrowRight size={16} />
+              <Link href="/admin/incidents" className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-orange hover:text-white transition-colors flex items-center gap-2">
+                All Reports <ArrowRight size={14} />
               </Link>
           </div>
           <div className="divide-y divide-white/5">
               {recentIncidents.map((inc) => (
                   <div key={inc._id} className="p-6 flex items-center justify-between group hover:bg-white/[0.03] transition-colors">
                       <div className="flex items-center gap-4">
-                          <div className={`w-2 h-2 rounded-full ${inc.isVerified ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+                          <div className={`w-2 h-2 rounded-full ${inc.isVerified ? 'bg-green-500' : 'bg-accent-orange animate-pulse'}`} />
                           <div>
-                              <p className="font-semibold text-white tracking-wide">{inc.title}</p>
-                              <p className="text-sm text-text-secondary mt-1">{inc.category} • {new Date(inc.createdAt).toLocaleString()}</p>
+                              <p className="font-semibold text-white tracking-wide uppercase italic text-sm">{inc.title}</p>
+                              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1 italic">
+                                {inc.category} • {new Date(inc.createdAt).toLocaleString()}
+                              </p>
+                              {inc.location?.address ? (
+                                <p className="text-[9px] font-bold text-neutral-400 mt-1 uppercase tracking-tighter">
+                                  Loc: {inc.location.address}
+                                </p>
+                              ) : inc.location?.coordinates && (
+                                <p className="text-[9px] font-mono text-neutral-600 mt-1 uppercase font-bold tracking-tighter">
+                                  GPS: {inc.location.coordinates[1]?.toFixed(6)}, {inc.location.coordinates[0]?.toFixed(6)}
+                                </p>
+                              )}
                           </div>
                       </div>
-                      <Link href="/admin/incidents" className="p-2 rounded-xl bg-white/5 text-text-secondary group-hover:bg-accent-orange group-hover:text-white transition-all">
+                      <Link href="/admin/incidents" className="p-2 rounded-xl bg-white/5 text-text-secondary group-hover:bg-accent-orange group-hover:text-white transition-all active:scale-95">
                         <ArrowRight size={16} />
                       </Link>
                   </div>
               ))}
               {recentIncidents.length === 0 && !loading && (
-                 <div className="p-12 text-center text-text-secondary text-sm">No recent incidents detected.</div>
+                 <div className="p-12 text-center text-neutral-600 text-[10px] font-black uppercase tracking-[0.3em] italic font-mono">No recent system reports.</div>
               )}
           </div>
       </Card>

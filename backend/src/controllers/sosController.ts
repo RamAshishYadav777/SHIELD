@@ -5,17 +5,40 @@ import User from '../models/User';
 import notificationController from './notificationController';
 import sendEmail from '../utils/sendEmail';
 import logger from '../utils/logger';
+import axios from 'axios';
 
 class SOSController {
   // fires off an sos signal
   async triggerSOS(req: AuthRequest, res: Response) {
     try {
       const { coordinates, message } = req.body;
+      let address = req.body.address;
+
+      // Server-side fallback reverse geocoding for maximum reliability
+      if (!address || address === 'Current Location' || address === '') {
+        try {
+          const [lng, lat] = coordinates;
+          const geoRes = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`, {
+            headers: { 'User-Agent': 'SHIELD-Safety-Server' }
+          });
+          if (geoRes.data && geoRes.data.display_name) {
+             address = geoRes.data.display_name.split(',').slice(0, 3).join(',');
+          }
+        } catch (e) {
+          console.warn('Backend geocoding failed, using placeholder');
+        }
+      }
+
+      // Guarantee address exists for the UI
+      address = address || 'GPS Pinned Location';
+
       const user = await (User.findById(req.user.id) as any).populate('emergencyContacts');
 
       if (!user) {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
+
+      console.log(`[SOS SIGNAL] Saving location: ${address}`);
 
       const sos = await SOS.create({
         user: req.user.id,
@@ -23,6 +46,7 @@ class SOSController {
           type: 'Point',
           coordinates
         },
+        address: address,
         message
       });
 
@@ -48,6 +72,15 @@ class SOSController {
               userName: user.name,
               coordinates: coordinates,
               time: new Date()
+            });
+
+            // Specific channel for the Live SOS Activity feed
+            io.emit('new-sos', {
+              ...sos.toObject(),
+              user: { 
+                name: user.name, 
+                email: user.email 
+              }
             });
           }
 
@@ -123,7 +156,7 @@ class SOSController {
   // list of active alerts for admins to see
   async getActiveSOS(req: AuthRequest, res: Response) {
     try {
-      const alerts = await SOS.find({ status: 'active' }).populate('user', 'name phone email');
+      const alerts = await SOS.find({ status: 'active' }).populate('user', 'name email');
       res.status(200).json({ success: true, data: alerts });
     } catch (error: any) {
       res.status(500).json({ success: false, message: 'Fetch active alerts failed: ' + error.message });
@@ -133,13 +166,24 @@ class SOSController {
   // user wants to see their past sos calls
   async getSOSHistory(req: AuthRequest, res: Response) {
     try {
-      const history = await SOS.find({ user: req.user.id }).sort('-createdAt');
+      const history = await SOS.find({ user: req.user.id }).populate('user', 'name email').sort('-createdAt');
       res.status(200).json({ success: true, data: history });
     } catch (error: any) {
       res.status(500).json({ success: false, message: 'History fetch failed: ' + error.message });
     }
   }
 
+  async getAllSOSAdmin(req: AuthRequest, res: Response) {
+    try {
+      const history = await SOS.find()
+        .populate('user', 'name email role')
+        .sort({ createdAt: -1 });
+      res.json({ success: true, count: history.length, data: history });
+    } catch (error: any) {
+      logger.error(`Error fetching admin SOS history: ${error.message}`);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
   // mark an alert as resolved
   async resolveSOS(req: AuthRequest, res: Response) {
     try {

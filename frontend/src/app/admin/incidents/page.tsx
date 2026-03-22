@@ -20,11 +20,15 @@ interface Incident {
   title: string;
   description: string;
   category: string;
-  address: string;
   isVerified: boolean;
   images: string[];
   createdAt: string;
   user: { name: string };
+  location: {
+    type: string;
+    coordinates: number[];
+    address?: string;
+  };
 }
 
 export default function AdminIncidentsPage() {
@@ -171,10 +175,14 @@ export default function AdminIncidentsPage() {
                    </p>
 
                    <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                      <div className="flex items-center gap-2 text-xs text-text-secondary font-medium uppercase tracking-tighter">
-                         <MapPin size={14} className="text-accent-orange" />
-                         {incident.address || 'GPS Coordinates Provided'}
-                      </div>
+                       <div className="flex items-center gap-2 text-[10px] font-bold text-neutral-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-tighter">
+                          <MapPin size={12} className="text-accent-orange" />
+                          <span>{incident.location?.address}</span>
+                          {incident.location?.address && <span className="opacity-20 px-1">|</span>}
+                          <span className="font-mono text-neutral-500">
+                            GPS: {incident.location?.coordinates[1]?.toFixed(6)}, {incident.location?.coordinates[0]?.toFixed(6)}
+                          </span>
+                       </div>
                       <div className="flex gap-4">
                         <Button 
                           onClick={() => handleDelete(incident._id)}
