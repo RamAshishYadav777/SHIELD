@@ -22,6 +22,11 @@ api.interceptors.request.use((config) => {
 // Prevent multiple refresh calls simultaneously
 let isRefreshing = false;
 let failedQueue: any[] = [];
+let isLoggingOut = false;
+
+export const setLoggingOutFlag = (value: boolean) => {
+  isLoggingOut = value;
+};
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
@@ -41,7 +46,8 @@ api.interceptors.response.use(
     const originalRequest: any = error.config;
 
     // Only attempt refresh if it's a 401 and not already a retry or refresh call
-    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+    // Only attempt refresh if it's a 401, not logging out, and not already a retry
+    if (error.response?.status === 401 && !isLoggingOut && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

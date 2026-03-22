@@ -57,14 +57,24 @@ export const useAuth = () => {
 
   const logout = useCallback(async () => {
     try {
+      // Signal to API interceptor to NOT refresh
+      const { setLoggingOutFlag } = await import('@/lib/api');
+      setLoggingOutFlag(true);
+      
       await api.get('/auth/logout');
     } catch (e) {
       // Ignore
+    } finally {
+      dispatch(logoutUser());
+      queryClient.clear(); // Nuclear wipe of all query data
+      
+      // Cleanup signaling
+      const { setLoggingOutFlag } = await import('@/lib/api');
+      setLoggingOutFlag(false);
+      
+      toast.success('Logged out successfully');
+      router.push('/');
     }
-    dispatch(logoutUser());
-    queryClient.setQueryData(['auth-me'], null);
-    toast.success('Logged out successfully');
-    router.push('/');
   }, [dispatch, queryClient, router]);
 
   const refreshUser = useCallback(async () => {
