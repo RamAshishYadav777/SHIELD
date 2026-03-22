@@ -70,10 +70,17 @@ export const useSocket = () => {
         dispatch(setConnected(false));
         dispatch(setSocketId(null));
       });
+    }
 
-      newSocket.on('system-alert', (data: any) => {
+    // Attach (or re-attach) the system-alert listener on the active socket.
+    // Always remove the old one first to prevent stacking duplicates on re-renders.
+    const activeSocket = globalSocket;
+    if (activeSocket) {
+      activeSocket.off('system-alert');
+      activeSocket.on('system-alert', (data: any) => {
         playSiren();
-        toast(`EMERGENCY: ${data.userName} NEEDS HELP!`, {
+        toast(`🚨 EMERGENCY: ${data.userName} NEEDS HELP!`, {
+          id: 'sos-alert', // Single global ID ensures only one toast ever shows
           duration: 10000,
           position: 'top-center',
           style: {

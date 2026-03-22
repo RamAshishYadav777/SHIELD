@@ -51,6 +51,9 @@ class SOSController {
             });
           }
 
+          // Track emails already notified to avoid duplicates
+          const notifiedEmails = new Set<string>();
+
           // 1. Alerting Admins
           for (const admin of admins) {
             notificationController.sendNotification(admin._id.toString(), {
@@ -60,6 +63,7 @@ class SOSController {
             }).catch(e => logger.error(`Push failed for admin ${admin._id}: ${e.message}`));
 
             if (admin.email) {
+              notifiedEmails.add(admin.email.toLowerCase());
               sendEmail({
                 email: admin.email,
                 subject: `🚨 SYSTEM ALERT: SOS triggered by ${user.name}`,
@@ -72,9 +76,15 @@ class SOSController {
             }
           }
 
-          // 2. Alerting Emergency Contacts
+          // 2. Alerting Emergency Contacts (skip anyone already notified as admin)
           for (const contact of user.emergencyContacts as any[]) {
             if (contact.email) {
+              const contactEmail = contact.email.toLowerCase();
+              if (notifiedEmails.has(contactEmail)) {
+                logger.info(`SOS System: Skipping ${contact.email} (already notified as admin)`);
+                continue;
+              }
+              notifiedEmails.add(contactEmail);
               logger.info(`SOS System: Attempting to email emergency contact ${contact.name} at ${contact.email}`);
               sendEmail({
                 email: contact.email,

@@ -9,17 +9,23 @@ interface EmailOptions {
 }
 
 const sendEmail = async (options: EmailOptions) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.SMTP_HOST) {
-    logger.error('SMTP configuration missing in environment variables. Email will not be sent.');
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    logger.error('SMTP credentials missing (SMTP_USER / SMTP_PASS). Email will not be sent.');
     return;
   }
 
   const mailOptions = {
-    from: `"SHIELD System" <${process.env.SMTP_USER}>`,
+    from: `"SHIELD Safety System" <${process.env.SMTP_USER}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
     html: options.html,
+    headers: {
+      'X-Priority': '1',           // Mark as highest priority
+      'X-MSMail-Priority': 'High',
+      'Importance': 'High',
+      'X-Mailer': 'SHIELD Safety Platform',
+    }
   };
 
   try {

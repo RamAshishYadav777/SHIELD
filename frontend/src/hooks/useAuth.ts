@@ -29,24 +29,31 @@ export const useAuth = () => {
   });
 
   // Keep Redux in sync with React Query
+  // CRITICAL: only sync when the query is DONE loading, and only clear if it
+  // explicitly returned null (logged out). Never overwrite a live user with
+  // 'undefined' (which means the query is still in-flight).
   useEffect(() => {
-    if (!isLoading) {
-      dispatch(setUser(userData));
+    if (!isLoading && userData !== undefined) {
+      dispatch(setUser(userData ?? null));
     }
   }, [userData, isLoading, dispatch]);
 
   const login = useCallback((userData: any) => {
-    dispatch(setUser(userData));
-    // Background tasks
-    subscribeToNotifications().catch(err => console.error('Silent notification failure:', err));
+    if (!userData) return;
     
-    toast.success(`Welcome back, ${userData.name}!`);
-    if (userData.role === 'admin') {
-      router.push('/admin');
-    } else {
-      router.push('/dashboard');
-    }
-  }, [dispatch, router]);
+    // Nuclear state clearing and setting
+    queryClient.setQueryData(['auth-me'], userData);
+    dispatch(setUser(userData));
+    
+    // Give state a moment to propagate
+    setTimeout(() => {
+      toast.success(`Welcome back, ${userData.name}!`, { id: 'auth-toast' });
+      
+      // High Priority Redirect Strategy
+      const target = userData.role === 'admin' ? '/admin' : '/dashboard';
+      router.replace(target);
+    }, 100);
+  }, [dispatch, router, queryClient]);
 
   const logout = useCallback(async () => {
     try {
