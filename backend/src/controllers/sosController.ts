@@ -75,6 +75,7 @@ class SOSController {
           // 2. Alerting Emergency Contacts
           for (const contact of user.emergencyContacts as any[]) {
             if (contact.email) {
+              logger.info(`SOS System: Attempting to email emergency contact ${contact.name} at ${contact.email}`);
               sendEmail({
                 email: contact.email,
                 subject: `🚨 EMERGENCY: ${user.name} needs help!`,
@@ -93,7 +94,11 @@ class SOSController {
                     </a>
                   </div>
                 `
-              }).catch(e => logger.error(`Email failed for contact ${contact.email}: ${e.message}`));
+              })
+              .then(() => logger.info(`SOS System: Successfully sent email to ${contact.email}`))
+              .catch(e => logger.error(`SOS System: Email failed for contact ${contact.email}: ${e.message}`));
+            } else {
+              logger.info(`SOS System: Skipping contact ${contact.name} (No email provided)`);
             }
           }
         } catch (backgroundError: any) {

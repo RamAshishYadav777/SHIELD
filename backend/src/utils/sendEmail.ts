@@ -9,6 +9,10 @@ interface EmailOptions {
 }
 
 const sendEmail = async (options: EmailOptions) => {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.SMTP_HOST) {
+    logger.error('SMTP configuration missing in environment variables. Email will not be sent.');
+    return;
+  }
 
   const mailOptions = {
     from: `"SHIELD System" <${process.env.SMTP_USER}>`,
