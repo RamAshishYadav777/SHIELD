@@ -77,8 +77,12 @@ export const useAuth = () => {
       const { setLoggingOutFlag } = await import('@/lib/api');
       setLoggingOutFlag(false);
       
-      // Force a hard reload to ensure zero memory-resident states
-      window.location.href = "/";
+      toast.success('Logged out successfully', { id: 'logout-toast' });
+      
+      // Minor delay to ensure toast is visible before transition
+      setTimeout(() => {
+        router.push('/');
+      }, 100);
     }
   }, [dispatch, queryClient, router]);
 
