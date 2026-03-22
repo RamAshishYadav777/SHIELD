@@ -40,7 +40,7 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
-app.set('trust proxy', 1); // For production behind Nginx/Vercel
+app.set('trust proxy', true); // For production behind Nginx/Vercel/Render
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));

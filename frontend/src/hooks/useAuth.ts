@@ -25,7 +25,9 @@ export const useAuth = () => {
         return null; // Guest or expired
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: true,
   });
 
   // Keep Redux in sync with React Query

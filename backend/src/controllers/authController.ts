@@ -180,9 +180,13 @@ class AuthController {
 
   // logout - clear everything
   async logout(req: Request, res: Response) {
-    const clearOptions = {
+    const isProd = process.env.NODE_ENV === 'production';
+    const clearOptions: any = {
         httpOnly: true,
-        expires: new Date(0)
+        expires: new Date(0),
+        secure: isProd,
+        sameSite: isProd ? 'none' : 'lax',
+        path: '/'
     };
     
     res.cookie('token', 'none', clearOptions);
