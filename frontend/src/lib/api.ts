@@ -6,8 +6,16 @@ const getBaseURL = () => {
 };
 
 const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL: getBaseURL().replace(/\/$/, '') + '/',
   withCredentials: true,
+});
+
+// Request interceptor to clean URLs
+api.interceptors.request.use((config) => {
+  if (config.url?.startsWith('/')) {
+    config.url = config.url.substring(1);
+  }
+  return config;
 });
 
 // Global error handler for session expiration
@@ -46,7 +54,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.get(`${api.defaults.baseURL}/auth/refresh`, { withCredentials: true });
+        await axios.get(`${api.defaults.baseURL}auth/refresh`.replace(/\/+/g, '/').replace(':/', '://'), { withCredentials: true });
         isRefreshing = false;
         processQueue(null);
         return api(originalRequest);
