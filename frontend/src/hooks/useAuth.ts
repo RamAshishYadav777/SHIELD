@@ -65,15 +65,18 @@ export const useAuth = () => {
     } catch (e) {
       // Ignore
     } finally {
+      // Nuclear wipe of all potential persistent stores
       dispatch(logoutUser());
-      queryClient.clear(); // Nuclear wipe of all query data
+      queryClient.clear();
+      localStorage.clear();
+      sessionStorage.clear();
       
-      // Cleanup signaling
+      // Signal cleanup
       const { setLoggingOutFlag } = await import('@/lib/api');
       setLoggingOutFlag(false);
       
-      toast.success('Logged out successfully');
-      router.push('/');
+      // Force a hard reload to ensure zero memory-resident states
+      window.location.href = "/";
     }
   }, [dispatch, queryClient, router]);
 
