@@ -49,63 +49,65 @@ export default function HomeBanner() {
     <div className="relative w-full h-auto lg:h-[85vh] min-h-[500px] overflow-hidden bg-black flex flex-col lg:flex-row mt-20 font-sans">
       
       {/* ── LEFT SIDE: VIDEO SECTION (65%) ── */}
-      <div className="relative h-[55vh] lg:h-full w-full lg:w-[65%] overflow-hidden border-b lg:border-r border-white/5 bg-black">
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={index}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-            className="absolute inset-0 w-full h-full"
-          >
-            <video
-              src={currentBanner.video}
-              autoPlay
-              muted
-              playsInline
-              onEnded={nextSlide} 
-              onLoadedData={handleVideoLoad}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-[5]" />
-            
-            <div className="absolute bottom-10 lg:bottom-20 left-6 lg:left-20 z-10 max-w-2xl">
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-              >
-                <div className="flex items-center gap-2 lg:gap-3 mb-4">
-                  <div className="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
-                    <span className="text-[8px] lg:text-[10px] font-black text-primary uppercase tracking-widest">Live</span>
-                  </div>
-                  <span className="text-[9px] lg:text-[10px] font-bold text-white/50 uppercase tracking-widest">
-                    {currentBanner.title}
-                  </span>
+      <div className="relative h-[55vh] lg:h-full w-full lg:w-[65%] overflow-hidden border-b lg:border-r border-white/5 bg-neutral-900">
+        {/* Persistent background to prevent black flash */}
+        <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-black to-neutral-900 z-0" />
+        
+        <motion.div
+          key={index}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          className="absolute inset-0 w-full h-full z-1"
+        >
+          <video
+            key={currentBanner.video}
+            src={currentBanner.video}
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={nextSlide} 
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ filter: "brightness(0.8)" }}
+          />
+          
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-[5]" />
+          
+          <div className="absolute bottom-10 lg:bottom-20 left-6 lg:left-20 z-10 max-w-2xl">
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              <div className="flex items-center gap-2 lg:gap-3 mb-4">
+                <div className="px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
+                  <span className="text-[8px] lg:text-[10px] font-black text-primary uppercase tracking-widest">Live Feed</span>
                 </div>
+                <span className="text-[9px] lg:text-[10px] font-bold text-white/50 uppercase tracking-widest">
+                  {currentBanner.title}
+                </span>
+              </div>
 
-                <h1 className="text-4xl md:text-8xl font-black text-white tracking-tighter leading-none mb-4 lg:mb-6 uppercase">
-                  {currentBanner.subtitle.split(' ').map((word, i) => (
-                    <span key={i} className={i === 1 ? "text-primary block" : "block"}>{word}</span>
-                  ))}
-                </h1>
+              <h1 className="text-4xl md:text-8xl font-black text-white tracking-tighter leading-none mb-4 lg:mb-6 uppercase">
+                {currentBanner.subtitle.split(' ').map((word, i) => (
+                  <span key={i} className={i === 1 ? "text-primary block" : "block"}>{word}</span>
+                ))}
+              </h1>
 
-                <p className="text-[11px] lg:text-base text-white/70 font-medium max-w-[240px] lg:max-w-sm mb-6 lg:mb-10 leading-relaxed uppercase">
-                  {currentBanner.description}
-                </p>
+              <p className="text-[11px] lg:text-base text-white/70 font-medium max-w-[240px] lg:max-w-sm mb-6 lg:mb-10 leading-relaxed uppercase">
+                {currentBanner.description}
+              </p>
 
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="h-0.5 w-8 lg:w-12 bg-primary" />
-                  <span className="text-[9px] lg:text-xs font-black text-white/20">
-                    {(index + 1).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
+              <div className="flex items-center gap-3 lg:gap-4">
+                <div className="h-0.5 w-8 lg:w-12 bg-primary" />
+                <span className="text-[9px] lg:text-xs font-black text-white/20">
+                  {(index + 1).toString().padStart(2, '0')}
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
 
       {/* ── RIGHT SIDE: ACTION SECTION (35%) ── */}
