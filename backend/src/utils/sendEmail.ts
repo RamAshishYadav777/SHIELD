@@ -1,4 +1,4 @@
-import transporter from '../config/mailConfig';
+import { Resend } from 'resend';
 import logger from './logger';
 
 interface EmailOptions {
@@ -8,29 +8,28 @@ interface EmailOptions {
   html?: string;
 }
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const sendEmail = async (options: EmailOptions) => {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    logger.error('SMTP credentials missing (SMTP_USER / SMTP_PASS). Email will not be sent.');
+  if (!process.env.RESEND_API_KEY) {
+    logger.error('RESEND_API_KEY is missing. Email will not be sent.');
     return;
   }
 
-  const mailOptions = {
-    from: `"SHIELD Safety System" <${process.env.SMTP_USER}>`,
-    to: options.email,
-    subject: options.subject,
-    text: options.message,
-    html: options.html,
-    headers: {
-      'X-Priority': '1',           // Mark as highest priority
-      'X-MSMail-Priority': 'High',
-      'Importance': 'High',
-      'X-Mailer': 'SHIELD Safety Platform',
-    }
-  };
-
   try {
-    const info = await transporter.sendMail(mailOptions);
-    logger.info(`Email sent: ${info.messageId}`);
+    const { data, error } = await resend.emails.send({
+      from: 'SHIELD Safety System <onboarding@resend.dev>',
+      to: options.email,
+      subject: options.subject,
+      html: options.html || `<p>${options.message}</p>`,
+    });
+
+    if (error) {
+      logger.error(`Resend API error: ${error.message}`);
+      throw new Error(error.message);
+    }
+
+    logger.info(`Email sent via Resend: ${data?.id}`);
   } catch (error: any) {
     logger.error(`Error sending email: ${error.message}`);
     throw new Error('Email could not be sent');
