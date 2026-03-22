@@ -9,12 +9,12 @@ dotenv.config();
  * Uses SMTP settings from the environment variables.
  */
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports (like 587)
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // Force SSL
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: (process.env.SMTP_USER || '').trim(),
+    pass: (process.env.SMTP_PASS || '').replace(/\s/g, ''),
   },
 });
 
