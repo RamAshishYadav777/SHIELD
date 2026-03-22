@@ -176,7 +176,7 @@ class SOSController {
   async getAllSOSAdmin(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.find()
-        .populate('user', 'name email role')
+        .populate('user', 'name email role phone emergencyContacts')
         .sort({ createdAt: -1 });
       res.json({ success: true, count: history.length, data: history });
     } catch (error: any) {

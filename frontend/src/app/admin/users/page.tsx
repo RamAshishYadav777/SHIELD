@@ -6,6 +6,7 @@ import {
   ArrowLeft, CheckCircle2, Lock, Unlock
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Card, Button } from '@/components/ui';
 import api from '@/lib/api';
 import { toast } from 'react-hot-toast';
@@ -24,6 +25,7 @@ interface UserData {
 }
 
 export default function UserManagementPage() {
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +35,20 @@ export default function UserManagementPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Handle direct link from SOS feed
+  useEffect(() => {
+    const targetId = searchParams.get('userId');
+    if (targetId && users.length > 0) {
+      const user = users.find(u => u._id === targetId);
+      if (user) {
+        setFilterRole(user.role);
+        setSelectedUserContacts(user);
+        // Clear search to ensure user is visible in the list
+        setSearchQuery('');
+      }
+    }
+  }, [searchParams, users]);
 
   const fetchUsers = async () => {
     try {

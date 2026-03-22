@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, AlertTriangle, Activity,
-  Zap, ArrowRight,
+  Zap, ArrowRight, Mail, Phone,
   Shield, Copy, Check
 } from 'lucide-react';
 import { Card } from '@/components/ui';
@@ -23,6 +23,7 @@ export default function AdminDashboardPage() {
   const [recentIncidents, setRecentIncidents] = useState<any[]>([]);
   const [recentSOS, setRecentSOS] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSOSUser, setSelectedSOSUser] = useState<any>(null);
 
   useEffect(() => {
     fetchAll();
@@ -169,9 +170,16 @@ export default function AdminDashboardPage() {
                               <p className="font-black text-white uppercase tracking-tight italic text-xl leading-none">
                                 SOS: <span className="text-red-500">{sos.user?.name || 'Unknown User'}</span>
                               </p>
-                              <div className="flex items-center gap-3 mt-2">
-                                <span className="text-[10px] text-red-500/60 font-black uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded-md border border-red-500/10">Live Emergency</span>
-                                <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest italic leading-none">• {new Date(sos.createdAt).toLocaleString()}</span>
+                              <div className="flex items-center gap-4 mt-2">
+                                <div className="flex items-center gap-2 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                    <span className="text-[9px] text-red-500 font-black uppercase tracking-widest">Live Signal</span>
+                                </div>
+                                <div className="h-5 w-px bg-white/10" />
+                                <div className="flex flex-col justify-center leading-none">
+                                    <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-[0.1em] mb-1">{new Date(sos.createdAt).toLocaleDateString()}</span>
+                                    <span className="text-[11px] text-neutral-300 font-black tracking-tighter uppercase">{new Date(sos.createdAt).toLocaleTimeString()}</span>
+                                </div>
                               </div>
                           </div>
                       </div>
@@ -203,6 +211,14 @@ export default function AdminDashboardPage() {
                                   <Copy size={14} />
                               </button>
                           </div>
+
+                          <button 
+                            onClick={() => setSelectedSOSUser(sos.user)}
+                            className="h-10 px-6 bg-red-500/20 border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg flex items-center gap-2"
+                          >
+                            <Users size={14} />
+                            RESCUE INFO
+                          </button>
                       </div>
                   </div>
               ))}
@@ -253,6 +269,63 @@ export default function AdminDashboardPage() {
               )}
           </div>
       </Card>
+
+      {/* ── EMERGENCY CONTACT MODAL ── */}
+      {selectedSOSUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-black/90 backdrop-blur-xl" 
+            onClick={() => setSelectedSOSUser(null)} 
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative bg-neutral-900 border border-red-500/20 rounded-[2.5rem] p-10 max-w-lg w-full shadow-[0_0_50px_rgba(239,68,68,0.2)] overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-500 via-accent-magenta to-red-500" />
+            
+            <div className="flex items-start justify-between mb-8">
+              <div>
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
+                  Rescue <span className="text-red-500">Record</span>
+                </h3>
+                <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Crisis Intel Level 4</span>
+                </div>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shadow-2xl">
+                <Shield size={28} />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Primary User Info */}
+              <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] shadow-2xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-500/60 mb-4 italic">Direct Communication Data</p>
+                <h4 className="text-2xl font-black text-white mb-6 uppercase tracking-tight">{selectedSOSUser?.name}</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 text-sm font-bold text-neutral-400 p-4 bg-white/[0.02] rounded-2xl border border-white/5">
+                    <Mail size={18} className="text-red-500" /> {selectedSOSUser?.email}
+                  </div>
+                  <div className="flex items-center gap-4 text-lg font-black text-white p-4 bg-white/[0.04] rounded-2xl border border-red-500/10">
+                    <Phone size={20} className="text-red-500" /> {selectedSOSUser?.phone || 'No direct phone logged'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setSelectedSOSUser(null)}
+              className="mt-10 w-full py-5 bg-white/5 hover:bg-white/10 text-[11px] font-black uppercase tracking-[0.3em] text-white rounded-2xl transition-all border border-white/5 hover:border-red-500/50"
+            >
+              Close Rescue Record
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
