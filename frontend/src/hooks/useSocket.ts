@@ -55,7 +55,7 @@ export const useSocket = () => {
 
   useEffect(() => {
     if (user && !globalSocket) {
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '') : 'http://localhost:5000');
       const newSocket = io(socketUrl);
       globalSocket = newSocket;
       setSocket(newSocket);

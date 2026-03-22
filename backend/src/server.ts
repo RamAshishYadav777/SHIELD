@@ -24,7 +24,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://shield-frontend.vercel.app' // Placeholder: User should update this
+  'https://shield-gilt.vercel.app',
+  'https://shield-frontend.vercel.app'
 ].filter(Boolean) as string[];
 
 const io = new Server(server, {
