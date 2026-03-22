@@ -11,10 +11,10 @@ class SOSController {
   async triggerSOS(req: AuthRequest, res: Response) {
     try {
       const { coordinates, message } = req.body;
-      const user = await User.findById(req.user.id);
+      const user = await (User.findById(req.user.id) as any).populate('emergencyContacts');
 
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found in data' });
+        return res.status(404).json({ success: false, message: 'User not found' });
       }
 
       const sos = await SOS.create({
