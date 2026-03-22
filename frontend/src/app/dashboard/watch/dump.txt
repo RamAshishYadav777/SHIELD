@@ -1,0 +1,60 @@
+ottom_right,_var(--tw-gradient-stops))] from-accent-magenta/5 via-transparent to-transparent">
+             <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                <Loader2 size={40} className="animate-spin mb-4 text-accent-orange" />
+                <p className="text-sm">Finding your location...</p>
+             </div>
+             <p className="text-center py-20 opacity-30 italic">Loading conversation history...</p>
+             <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
+                <MessageSquare size={48} className="mb-4" />
+                <p className="text-sm">No chat activity here yet.<br/>Start a conversation to say hello!</p>
+             </div>
+             messages.map((msg, i) => {
+               const isMe = msg.user._id === user?.id;
+               return (
+                 <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[80%] space-y-1`}>
+                       <div className={`flex items-center gap-2 mb-1 ${isMe ? 'justify-end' : ''}`}>
+                          <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">{msg.user.name}</span>
+                          <span className="text-[8px] text-text-secondary opacity-50">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                       </div>
+                       <div className={`
+                         px-6 py-4 rounded-2xl text-sm leading-relaxed shadow-xl
+                         ${isMe 
+                           ? 'bg-accent-magenta text-white rounded-tr-none' 
+                           : 'glass border-white/5 text-white/90 rounded-tl-none'
+                         }
+                       `}>
+                          {msg.content}
+                       </div>
+                    </div>
+                 </div>
+               );
+             })
+           )}
+           <div ref={scrollRef} />
+        </div>
+
+        {/* Input area */}
+        <form onSubmit={handleSend} className="p-6 bg-white/5 border-t border-white/10 flex gap-4">
+           <input 
+             type="text" 
+             placeholder="Broadcast a message to this area..." 
+             className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-accent-orange transition-all text-sm"
+             value={newMessage}
+             onChange={(e) => setNewMessage(e.target.value)}
+             disabled={!location}
+           />
+           <Button 
+            variant="primary" 
+            className="w-14 h-14 !rounded-2xl p-0 flex items-center justify-center shadow-lg"
+            type="submit"
+            disabled={!location || !newMessage.trim()}
+           >
+              <Send size={24} />
+           </Button>
+        </form>
+      </Card>
+    </div>
+  );
+}
+

@@ -1,0 +1,21 @@
+# Common dependency folders
+**/node_modules/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+**/logs/
+*.log
+
+# Debug and IDE files
+.vscode/
+.idea/
+.next/
+dist/
+
+# Environment files
+.env
+.env.*
+

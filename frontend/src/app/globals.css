@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #F4821F;
+  --color-secondary: #B9055E;
+  --color-accent: #00FFAA;
+  --color-bg-dark: #0B0B23;
+  --color-accent-orange: #F4821F;
+  --color-accent-magenta: #B9055E;
+  --color-accent-green: #00FFAA;
+  --animation-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@layer utilities {
+  .bg-accent-gradient {
+    background: linear-gradient(135deg, var(--color-accent-orange), var(--color-accent-magenta));
+  }
+
+  .animate-gradient-x {
+    animation: gradient-x 4s linear infinite;
+    background-size: 200% auto;
+  }
+
+  .py-4\.5 {
+    padding-top: 1.125rem;
+    padding-bottom: 1.125rem;
+  }
+}
+
+@keyframes gradient-x {
+  0%   { background-position: 0% center; }
+  50%  { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+@keyframes sosBreath {
+  0% { transform: scale(1); box-shadow: 0 0 60px rgba(209, 11, 102, 0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 140px rgba(255, 26, 102, 0.7); }
+  100% { transform: scale(1); box-shadow: 0 0 60px rgba(209, 11, 102, 0.4); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0.9); opacity: 1; border-width: 4px; }
+  100% { transform: scale(1.6); opacity: 0; border-width: 1px; }
+}
+
+:root {
+  --font-outfit: "Outfit", sans-serif;
+  --font-jetbrains: "JetBrains Mono", monospace;
+}
+
+body {
+  background-color: var(--color-bg-dark);
+  color: #ffffff;
+  font-family: var(--font-outfit), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+

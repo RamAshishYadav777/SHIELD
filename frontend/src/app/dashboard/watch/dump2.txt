@@ -1,0 +1,19 @@
+ <ul className="text-[10px] text-text-secondary space-y-2 list-disc pl-4">
+              <li>Report suspicious activities in real-time.</li>
+              <li>Coordinate with neighbors for safe walks.</li>
+              <li>Avoid sharing precise suite numbers publicly.</li>
+           </ul>
+        </Card>
+      </div>
+
+      {/* Chat Area */}
+      <Card className="flex-1 p-0 overflow-hidden flex flex-col border-white/10 relative">
+        <div className="p-6 border-b border-white/5 bg-white/5 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="text-xs font-bold uppercase tracking-widest opacity-60">Local Safety Hub</span>
+           </div>
+           <MessageSquare size={18} className="text-text-secondary" />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-[radial-gradient(circle_at_b

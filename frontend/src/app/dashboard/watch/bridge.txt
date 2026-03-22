@@ -1,0 +1,1 @@
+6 custom-scrollbar bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-accen
