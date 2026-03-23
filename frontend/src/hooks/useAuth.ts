@@ -119,7 +119,8 @@ export const useAuth = () => {
 
   return {
     user,
-    loading: loading || isLoading,
+    loading: loading, // only use Redux loading which is set by actions like login/logout or initial hydration
+    isFetching: isLoading,
     login,
     logout,
     refreshUser,

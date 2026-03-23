@@ -14,14 +14,6 @@ export const Navbar = memo(() => {
   const pathname = usePathname();
   const isDashboard = useMemo(() => pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin'), [pathname]);
 
-  const [hasHydrated, setHasHydrated] = React.useState(false);
-  
-  React.useEffect(() => {
-    setHasHydrated(true);
-  }, []);
-
-  const isActuallyLoading = !hasHydrated || loading;
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] h-16 md:h-20 bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 md:px-12 flex items-center justify-between">
       {/* ── LEFT: BOLD LOGO ── */}
@@ -71,7 +63,7 @@ export const Navbar = memo(() => {
 
       {/* ── RIGHT: ACTIONS ── */}
       <div className="flex items-center gap-3">
-        {isActuallyLoading ? (
+        {loading ? (
           <div className="flex items-center gap-3 w-40 h-10 bg-white/5 rounded-full animate-pulse border border-white/5" />
         ) : user ? (
           <div className="flex items-center gap-5">
