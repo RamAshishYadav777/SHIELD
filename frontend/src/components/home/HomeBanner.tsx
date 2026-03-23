@@ -30,6 +30,7 @@ const BANNER_DATA = [
 
 export default function HomeBanner() {
   const [index, setIndex] = useState(0);
+  const [videoReady, setVideoReady] = useState(false);
 
   const nextSlide = useCallback(() => {
     setIndex((prev) => (prev + 1) % BANNER_DATA.length);
@@ -39,11 +40,12 @@ export default function HomeBanner() {
     setIndex(idx);
   }, []);
 
-  const handleVideoLoad = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
-    e.currentTarget.play().catch(() => {});
-  }, []);
-
   const currentBanner = useMemo(() => BANNER_DATA[index], [index]);
+
+  // Reset video ready state when slide changes
+  useEffect(() => {
+    setVideoReady(false);
+  }, [index]);
 
   return (
     <div className="relative w-full h-auto lg:h-[85vh] min-h-[500px] overflow-hidden bg-black flex flex-col lg:flex-row mt-20 font-sans">
@@ -65,9 +67,19 @@ export default function HomeBanner() {
               muted
               playsInline
               preload="auto"
-              onEnded={nextSlide} 
+              onEnded={nextSlide}
+              onLoadedData={() => setVideoReady(true)}
               className="absolute inset-0 w-full h-full object-cover opacity-80"
               style={{ background: 'black' }}
+            />
+            
+            {/* Smooth transition overlay to hide loading blink */}
+            <motion.div 
+               initial={{ opacity: 1 }} 
+               animate={{ opacity: videoReady ? 0 : 1 }} 
+               exit={{ opacity: 1 }} 
+               transition={{ duration: 0.8 }} 
+               className="absolute inset-0 bg-black z-10 pointer-events-none" 
             />
             
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent z-[5]" />

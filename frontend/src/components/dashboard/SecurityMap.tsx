@@ -1,41 +1,90 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, memo } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
   Marker, 
   Popup, 
-  Circle, 
-  useMap, 
-  Tooltip 
+  useMap,
+  Circle
 } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
-// ─── ICON DEFINITIONS (PREMIUM MAGENTA) ─────────────�const USER_ICON = L.divIcon({
-  className: 'user-marker-hub',
-  html: `<div style="width: 24px; height: 24px; background: #b9055e; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 30px #b9055e; animation: userPulse 2s infinite ease-in-out;"></div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
+// ─── ICON DEFINITIONS ───────────────────────────────────────────────────────
+
+const USER_ICON = L.divIcon({
+  className: 'user-marker',
+  html: `<div style="width: 20px; height: 20px; background: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 15px #3b82f6; animation: userPulse 2s infinite;"></div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10]
 });
 
-const safeIcon = L.divIcon({
-  className: 'safe-dot',
-  html: `<div style="width: 14px; height: 14px; background: #22c55e; border: 1px solid white; border-radius: 50%; box-shadow: 0 0 15px #22c55e;"></div>`,
+const HUB_ICON = L.divIcon({
+  className: 'hub-marker',
+  html: `<div style="width: 14px; height: 14px; background: #22c55e; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #22c55e;"></div>`,
   iconSize: [14, 14],
   iconAnchor: [7, 7]
 });
 
-const threatIcon = L.divIcon({
-  className: 'threat-dot',
-  html: `<div style="width: 18px; height: 18px; background: #ef4444; border: 3.5px solid white; border-radius: 50%; box-shadow: 0 0 20px #ef4444; animation: threatPulse 2s infinite ease-in-out;"></div>`,
-  iconSize: [18, 18],
-  iconAnchor: [9, 9]
-});
+// ─── HELPER COMPONENTS ───────────────────────────────────────────────────────
 
-// ... (HeatmapLayer, ChangeView, SafetyScanner implementation stays the same) ...
+const MapController = memo(({ center, zoom }: { center: [number, number], zoom: number }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, zoom, { animate: true });
+  }, [center, zoom, map]);
+  return null;
+});
+MapController.displayName = 'MapController';
+
+const MapScanner = memo(({ onScan }: { onScan: (elements: any[]) => void }) => {
+  const map = useMap();
+  
+  const performScan = async () => {
+    if (map.getZoom() < 12) return;
+    const bounds = map.getBounds();
+    const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+    const q = `[out:json][timeout:25];(node["amenity"~"police|hospital|fire_station|medical|clinic"](${bbox});way["amenity"~"police|hospital|fire_station|medical|clinic"](${bbox}););out center;`;
+    
+    try {
+      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.elements) onScan(data.elements);
+    } catch (e) { /* silent */ }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(performScan, 1000);
+    map.on('moveend', performScan);
+    return () => {
+      clearTimeout(timer);
+      map.off('moveend', performScan);
+    };
+  }, [map]);
+
+  return null;
+});
+MapScanner.displayName = 'MapScanner';
+
+const HeatmapLayer = memo(({ points }: { points: any[] }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || points.length === 0) return;
+    // @ts-ignore
+    const heat = L.heatLayer(points, { 
+      radius: 35, 
+      blur: 20, 
+      maxZoom: 17, 
+      gradient: { 0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red' } 
+    }).addTo(map);
+    return () => { if (map) map.removeLayer(heat); };
+  }, [map, points]);
+  return null;
+});
+HeatmapLayer.displayName = 'HeatmapLayer';
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
@@ -44,127 +93,95 @@ interface SecurityMapProps {
   mapCenter: [number, number];
   safeZones: any[];
   incidents: any[];
-  onScan?: (spots: any[]) => void;
+  onScan: (elements: any[]) => void;
 }
 
 export default function SecurityMap({ 
-  userLocation, 
-  mapCenter, 
-  safeZones,
-  incidents,
-  onScan
+    userLocation, 
+    mapCenter, 
+    safeZones, 
+    incidents, 
+    onScan 
 }: SecurityMapProps) {
   
-  const heatmapPoints = useMemo(() => incidents.map((inc: any) => [
+  const heatmapPoints = useMemo(() => incidents.map(inc => [
     inc.location.coordinates[1],
     inc.location.coordinates[0],
-    0.6 
+    0.7
   ]), [incidents]);
 
-  const [mapId] = useState(() => `map-${Math.random().toString(36).substr(2, 9)}`);
-
-  const hubMarkers = useMemo(() => safeZones.map((zone: any) => (
-    <Marker 
-      key={`hub-${zone._id}`}
-      position={[zone.location.coordinates[1], zone.location.coordinates[0]]}
-      icon={safeIcon}
-      zIndexOffset={800}
-    >
-      <Tooltip direction="top" offset={[0, -5]} className="custom-tooltip" sticky>
-        {zone.name || 'SAFETY HUB'}
-      </Tooltip>
-    </Marker>
-  )), [safeZones]);
-
   return (
-    <div className="h-full w-full relative bg-black overflow-hidden will-change-transform">
+    <div className="w-full h-full relative group">
       <style>{`
-        @keyframes threatPulse {
-          0% { transform: scale(1); opacity: 1; filter: brightness(1); }
-          50% { transform: scale(1.3); opacity: 0.8; filter: brightness(1.4); }
-          100% { transform: scale(1); opacity: 1; filter: brightness(1); }
-        }
         @keyframes userPulse {
-          0% { transform: scale(1); box-shadow: 0 0 15px #b9055e; }
-          50% { transform: scale(1.25); box-shadow: 0 0 45px #b9055e; }
-          100% { transform: scale(1); box-shadow: 0 0 15px #b9055e; }
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+          70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
-        .leaflet-container { background: #000 !important; }
-        .crisp-map { filter: contrast(1.1) brightness(1.1) saturate(1.1); }
-        .custom-tooltip {
-           background: rgba(0,0,0,0.95);
-           border: 1px solid rgba(34,197,94,0.3);
-           color: white;
-           font-weight: 900;
-           text-transform: uppercase;
-           padding: 6px 14px;
-           border-radius: 10px;
-           font-size: 10px;
-           backdrop-filter: blur(8px);
-        }
+        .crisp-map .leaflet-tile { filter: brightness(0.7) contrast(1.2); }
       `}</style>
-
+      
       <MapContainer 
-        key={mapId}
-        center={userLocation} 
+        center={mapCenter} 
         zoom={14} 
-        style={{ height: '100%', width: '100%' }}
+        className="w-full h-full crisp-map bg-neutral-950" 
         zoomControl={false}
-        scrollWheelZoom={true}
-        preferCanvas={true}
-        className="z-0"
       >
-        <ChangeView center={mapCenter} zoom={15} />
-        
         <TileLayer
-          attribution='&copy; CARTO'
-          url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-          className="crisp-map"
+          attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
         />
 
         <HeatmapLayer points={heatmapPoints} />
-        
-        <TileLayer
-          attribution='&copy; CARTO'
-          url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
-          zIndex={500}
-          className="crisp-map"
-        />
+        <MapController center={mapCenter} zoom={14} />
+        <MapScanner onScan={onScan} />
 
-        <SafetyScanner 
-          incidents={incidents} 
-          onUpdate={onScan} 
-          mapCenter={mapCenter}
-        />
-
-        {hubMarkers}
-
-        <Marker position={userLocation} icon={USER_ICON} zIndexOffset={5000}>
-          <Popup className="premium-popup">
-            <div className="p-3">
-              <p className="font-black text-[#b9055e] text-xs">USER_NODE_ACTV</p>
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-tight mt-1 leading-none">GPS Locked</p>
-            </div>
-          </Popup>
-        </Marker>
-      </MapContainer>
-    </div>
-  );
-}
-l</p>
+        {/* User Location */}
+        <Marker position={userLocation} icon={USER_ICON}>
+          <Popup>
+            <div className="p-2 text-center">
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#F4821F]">Your Position</p>
+              <p className="text-xs font-bold text-white mt-1">Status: Protected</p>
             </div>
           </Popup>
         </Marker>
 
-        <TileLayer
-          attribution='&copy; CARTO'
-          url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
-          zIndex={1900}
-          className="crisp-map"
-        />
+        {/* Hub Markers */}
+        {safeZones.map(hub => (
+          <Marker 
+            key={hub._id} 
+            position={[hub.location.coordinates[1], hub.location.coordinates[0]]} 
+            icon={HUB_ICON}
+          >
+            <Popup>
+              <div className="p-1">
+                <p className="text-[10px] font-black uppercase text-green-500">{hub.type}</p>
+                <p className="text-sm font-bold text-white">{hub.name}</p>
+                <p className="text-[9px] text-neutral-400 mt-1 uppercase">{hub.address}</p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
-        {hubMarkers}
+        {/* Incident Circles */}
+        {incidents.map((inc, i) => (
+          <Circle 
+            key={`inc-${i}`}
+            center={[inc.location.coordinates[1], inc.location.coordinates[0]]}
+            radius={200}
+            pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.1, weight: 1 }}
+          />
+        ))}
+
       </MapContainer>
+
+      {/* OVERLAYS */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[400] flex gap-2 pointer-events-none">
+         <div className="px-4 py-1.5 rounded-full bg-black/80 backdrop-blur-xl border border-white/10 flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Grid Active</span>
+         </div>
+      </div>
     </div>
   );
 }

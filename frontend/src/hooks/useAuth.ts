@@ -30,19 +30,49 @@ export const useAuth = () => {
     refetchOnWindowFocus: true,
   });
 
+  // Hydrate Redux state from localStorage early to avoid flickering (speculative set)
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      const stored = localStorage.getItem('shield_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          dispatch(setUser(parsed));
+        } catch (e) {
+          localStorage.removeItem('shield_user');
+        }
+      } else {
+        // If nothing is stored, and it's not currently loading from react-query,
+        // then it's probably a guest. Give it a moment then settle.
+      }
+    }
+  }, [dispatch, user]);
+
   // Keep Redux in sync with React Query
-  // CRITICAL: only sync when the query is DONE loading, and only clear if it
-  // explicitly returned null (logged out). Never overwrite a live user with
-  // 'undefined' (which means the query is still in-flight).
   useEffect(() => {
     if (!isLoading) {
-      dispatch(setUser(userData ?? null));
+      const dataToSave = userData ?? null;
+      dispatch(setUser(dataToSave));
+      
+      // Update local storage snippet
+      if (typeof window !== 'undefined') {
+        if (dataToSave) {
+          localStorage.setItem('shield_user', JSON.stringify(dataToSave));
+        } else {
+          localStorage.removeItem('shield_user');
+        }
+      }
     }
   }, [userData, isLoading, dispatch]);
 
   const login = useCallback((userData: any) => {
     if (!userData) return;
     
+    // Save to local cache first for instant subsequent navigations
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shield_user', JSON.stringify(userData));
+    }
+
     // Nuclear state clearing and setting
     queryClient.setQueryData(['auth-me'], userData);
     dispatch(setUser(userData));
@@ -51,7 +81,6 @@ export const useAuth = () => {
     setTimeout(() => {
       toast.success(`Welcome back, ${userData.name}!`, { id: 'auth-toast' });
       
-      // High Priority Redirect Strategy
       const target = userData.role === 'admin' ? '/admin' : '/dashboard';
       router.replace(target);
     }, 100);
@@ -59,27 +88,25 @@ export const useAuth = () => {
 
   const logout = useCallback(async () => {
     try {
-      // Signal to API interceptor to NOT refresh
       const { setLoggingOutFlag } = await import('@/lib/api');
       setLoggingOutFlag(true);
-      
       await api.get('/auth/logout');
     } catch (e) {
       // Ignore
     } finally {
-      // Nuclear wipe of all potential persistent stores
       dispatch(logoutUser());
       queryClient.clear();
-      localStorage.clear();
-      sessionStorage.clear();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('shield_user');
+        localStorage.clear();
+        sessionStorage.clear();
+      }
       
-      // Signal cleanup
       const { setLoggingOutFlag } = await import('@/lib/api');
       setLoggingOutFlag(false);
       
       toast.success('Logged out successfully', { id: 'logout-toast' });
       
-      // Minor delay to ensure toast is visible before transition
       setTimeout(() => {
         router.push('/');
       }, 100);

@@ -5,9 +5,6 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   headers: async () => [
     {
       source: "/:all*(png|jpg|jpeg|gif|webp|svg|ico)",

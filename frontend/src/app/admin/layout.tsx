@@ -139,13 +139,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── MAIN CONTENT ── */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         <main className="flex-1 overflow-y-auto p-8 pt-40 h-full relative scroll-smooth selection:bg-accent-magenta/30 custom-scrollbar">
-           <AnimatePresence mode="wait">
+           <AnimatePresence>
              <motion.div
                key={pathname}
-               initial={{ opacity: 0, scale: 0.98 }}
-               animate={{ opacity: 1, scale: 1 }}
-               exit={{ opacity: 0, scale: 1.02 }}
-               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+               initial={{ opacity: 0, y: 5 }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: -5 }}
+               transition={{ duration: 0.3, ease: 'easeOut' }}
              >
                {children}
              </motion.div>
