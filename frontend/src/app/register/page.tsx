@@ -65,6 +65,11 @@ function RegisterContent() {
     { icon: Lock, text: "Very Safe", desc: "Private and secure" }
   ], []);
 
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   /* ─── ADMIN VARIANT ────────────────────────────────────── */
   if (isAdmin) {
     return (

@@ -18,6 +18,13 @@ function ResetPasswordContent() {
   const [success, setSuccess] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
+
   const token = searchParams.get('token');
 
   const handleSubmit = async (e: React.FormEvent) => {

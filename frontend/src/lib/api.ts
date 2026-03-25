@@ -8,6 +8,7 @@ const getBaseURL = () => {
 const api = axios.create({
   baseURL: getBaseURL().replace(/\/$/, '') + '/',
   withCredentials: true,
+  timeout: 15000,
 });
 
 // Request interceptor to clean URLs
@@ -45,9 +46,16 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
 
-    // Only attempt refresh if it's a 401 and not already a retry or refresh call
-    // Only attempt refresh if it's a 401, not logging out, and not already a retry
-    if (error.response?.status === 401 && !isLoggingOut && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+    const isAuthRequest = originalRequest.url?.includes('/auth/login') || 
+                          originalRequest.url?.includes('/auth/register') || 
+                          originalRequest.url?.includes('/auth/verify-otp') ||
+                          originalRequest.url?.includes('/auth/forgot-password');
+
+    const authPages = ['/login', '/register', '/verify-otp', '/forgot-password', '/reset-password', '/'];
+    const isAuthPage = typeof window !== 'undefined' && authPages.includes(window.location.pathname);
+
+    // Only attempt refresh if it's a 401, not logging out, not on auth page/request, and not already a retry or refresh call
+    if (error.response?.status === 401 && !isLoggingOut && !isAuthPage && !isAuthRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

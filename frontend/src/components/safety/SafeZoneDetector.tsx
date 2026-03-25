@@ -21,6 +21,8 @@ export default function SafeZoneDetector() {
         const [lng, lat] = userLocation;
         const now = Date.now();
         
+        // Safety Guard: Avoid malformed network calls if GPS drift occurs
+        if (isNaN(lat) || isNaN(lng) || lat === undefined || lng === undefined) return;
         // Skip if moved < 50m AND it hasn't been 10 minutes since last check
         if (lastCoordRef.current) {
           const dist = calculateDistance(lat, lng, lastCoordRef.current[1], lastCoordRef.current[0]);

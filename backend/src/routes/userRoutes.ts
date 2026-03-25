@@ -8,12 +8,8 @@ const router = express.Router();
 router.get('/public/stats', userController.getPublicStats);
 
 // everything here needs a token
+// User Profile and Contact Management (Requires Token)
 router.use(protect);
-
-// Admin only routes
-router.get('/admin/all', authorize('admin'), userController.getAllUsers);
-router.put('/admin/block/:id', authorize('admin'), userController.toggleBlockUser);
-router.delete('/admin/:id', authorize('admin'), userController.adminDeleteUser);
 
 router.route('/contacts')
   .get(userController.getContacts)

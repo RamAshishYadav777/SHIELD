@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export interface IEmergencyContact {
   name: string;
@@ -116,12 +116,36 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
 // Index for geoqueries
 userSchema.index({ location: '2dsphere' });
 
+
 // Hash password before saving
-userSchema.pre('save', async function(this: IUser) {
-  if (!this.isModified('password')) return;
-  if (this.password) {
-    this.password = await bcrypt.hash(this.password, 12);
+userSchema.pre('save', async function(this: any) {
+  console.log('--- PRE-SAVE DEBUG ---');
+  console.log('Email:', this.email);
+  console.log('Is password modified?', this.isModified('password'));
+  console.log('Password length:', this.password?.length);
+
+  if (!this.isModified('password') || !this.password) {
+    console.log('Save skipped: password not modified or missing');
+    return;
   }
+  
+  // Prevent double hashing if the value is already a bcrypt hash
+  const isHashed = /^\$2[aby]\$\d+\$.+/.test(this.password);
+  console.log('Is already hashed?', isHashed);
+  if (isHashed) {
+    console.log('Save skipped: already hashed');
+    return;
+  }
+
+  try {
+    const start = Date.now();
+    this.password = await bcrypt.hash(this.password, 10);
+    console.log('Password hashed in', Date.now() - start, 'ms');
+  } catch (err: any) {
+    console.error('Hashing error:', err);
+    throw err;
+  }
+  console.log('--- END PRE-SAVE DEBUG ---');
 });
 
 // Compare password method

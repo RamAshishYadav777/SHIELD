@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
-import mongoSanitize from 'express-mongo-sanitize';
+// import mongoSanitize from 'express-mongo-sanitize'; // Removed due to Express 5 compatibility issues
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import flash from 'connect-flash';
@@ -14,15 +14,25 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import logger from './utils/logger';
 import dbConnect from './config/dbConnect';
+// Removed unused import
 
 // Load environment variables
 dotenv.config();
+
+// Production Safety Check: Ensure critical security keys are present
+const REQUIRED_ENV = ['JWT_SECRET', 'MONGO_URI', 'SESSION_SECRET', 'MONGODB_URI'];
+const missingEnv = REQUIRED_ENV.filter(key => !(process.env[key] || process.env[key.replace('MONGODB_URI', 'MONGO_URI')]));
+if (missingEnv.length > 0 && process.env.NODE_ENV === 'production') {
+  console.error(`ERROR: Missing critical environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
 
 const app = express();
 const server = http.createServer(app);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
   'https://shield-gilt.vercel.app',
   'https://shield-frontend.vercel.app'
@@ -40,7 +50,7 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Middleware
-app.set('trust proxy', true); // For production behind Nginx/Vercel/Render
+app.set('trust proxy', process.env.NODE_ENV === 'production'); // For production behind Nginx/Vercel/Render
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -52,23 +62,48 @@ app.use(compression()); // Compress responses
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// app.use(mongoSanitize());
+// Basic Sanitization to prevent MongoDB Operator Injection
+const sanitizeObject = (obj: any) => {
+  if (obj && typeof obj === 'object') {
+    for (const key in obj) {
+      if (key.startsWith('$')) {
+        delete obj[key];
+      } else {
+        sanitizeObject(obj[key]);
+      }
+    }
+  }
+};
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.body) sanitizeObject(req.body);
+  if (req.query) sanitizeObject(req.query);
+  if (req.params) sanitizeObject(req.params);
+  next();
+});
 
 // HTTP Request logging
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', {
   stream: { write: (message) => logger.http(message.trim()) }
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Increased for development flexibility
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes'
-  }
+// Rate limiting - Tiered Strategy
+const defaultLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 100, // 100 requests per 15 minutes for general API
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' }
 });
-app.use('/api/', limiter);
+
+const criticalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, // Less strict to allow normal React Query refetch loops
+  message: { success: false, message: 'High-frequency critical request detected. Cooling down.' }
+});
+
+app.use('/api/', defaultLimiter);
+app.use('/api/auth/', criticalLimiter);
+app.use('/api/sos/', criticalLimiter);
 
 // Session and Flash
 app.use(session({
@@ -178,6 +213,7 @@ import flashRoutes from './routes/flashRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import chatRoutes from './routes/chatRoutes';
 import paymentRoutes from './routes/paymentRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sos', sosRoutes);
@@ -188,6 +224,7 @@ app.use('/api/flash', flashRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Default Route
 app.get('/', (req: Request, res: Response) => {
@@ -230,6 +267,27 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+const serverInstance = server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
+
+// Graceful Shutdown Handler
+const gracefulShutdown = (signal: string) => {
+  logger.info(`${signal} received. Starting graceful shutdown...`);
+  serverInstance.close(() => {
+    logger.info('HTTP server closed.');
+    mongoose.connection.close(false).then(() => {
+      logger.info('MongoDB connection closed.');
+      process.exit(0);
+    });
+  });
+
+  // Force shutdown after 10s if graceful fails
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

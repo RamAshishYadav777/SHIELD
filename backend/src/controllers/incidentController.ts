@@ -65,37 +65,16 @@ class IncidentController {
     }
   }
 
-  // admin can flip verification status
-  async toggleVerification(req: AuthRequest, res: Response) {
+  // fetch incidents reported by the logged-in user
+  async getMyIncidents(req: AuthRequest, res: Response) {
     try {
-      const incident = await Incident.findById(req.params.id);
-      if (!incident) {
-        return res.status(404).json({ success: false, message: 'Incident missing' });
-      }
-
-      incident.isVerified = !incident.isVerified;
-      await incident.save();
-
-      res.status(200).json({ success: true, data: incident });
+      const incidents = await Incident.find({ user: req.user.id }).sort({ createdAt: -1 });
+      res.status(200).json({ success: true, count: incidents.length, data: incidents });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Verify toggle failed: ' + error.message });
-    }
-  }
-
-  // admin can delete incident report
-  async deleteIncident(req: AuthRequest, res: Response) {
-    try {
-      const incident = await Incident.findById(req.params.id);
-      if (!incident) {
-        return res.status(404).json({ success: false, message: 'Incident not found' });
-      }
-
-      await incident.deleteOne();
-      res.status(200).json({ success: true, message: 'Incident report deleted successfully' });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Delete failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'Couldnt get my reports: ' + error.message });
     }
   }
 }
 
 export default new IncidentController();
+

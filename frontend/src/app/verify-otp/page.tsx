@@ -19,8 +19,6 @@ import Image from "next/image";
 function VerifyOTPContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
-  
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -32,6 +30,15 @@ function VerifyOTPContent() {
       return () => clearInterval(interval);
     }
   }, [timer]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
+
+  const email = searchParams.get("email") || "";
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;

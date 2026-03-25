@@ -46,10 +46,17 @@ function LoginContent() {
     }
   }, [email, password, isAdmin, login]);
 
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
+
   /* ─── ADMIN VARIANT ─────────────────────────────── */
   if (isAdmin) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center pt-32 pb-12 px-6 relative overflow-hidden font-sans">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center pt-20 pb-8 px-6 relative overflow-hidden font-sans">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <motion.div 
             animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
@@ -67,14 +74,14 @@ function LoginContent() {
           <div className="relative group/card">
             <div className="absolute -inset-[1px] bg-gradient-to-br from-red-600/20 to-accent-magenta/20 rounded-[2.5rem] blur-[2px] opacity-20" />
 
-            <div className="relative bg-neutral-950/80 backdrop-blur-3xl p-10 md:p-12 rounded-[2.5rem] border border-red-900/30 space-y-10 shadow-2xl">
-              <div className="text-center space-y-6">
-                <div className="relative inline-flex w-24 h-24 items-center justify-center mx-auto group/logo">
-                  <ShieldAlert className="w-14 h-14 text-red-500 relative z-10" />
+            <div className="relative bg-neutral-950/80 backdrop-blur-3xl p-8 md:p-10 rounded-[2.5rem] border border-red-900/30 space-y-6 shadow-2xl">
+              <div className="text-center space-y-4">
+                <div className="relative inline-flex w-16 h-16 items-center justify-center mx-auto group/logo">
+                  <ShieldAlert className="w-10 h-10 text-red-500 relative z-10" />
                 </div>
-                <div className="space-y-4">
-                  <span className="inline-flex px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-[0.4em] text-red-500">Admin Login</span>
-                  <h1 className="text-4xl font-black tracking-tight uppercase leading-[0.9]">Admin<br/><span className="text-red-500 italic">Area</span></h1>
+                <div className="space-y-2">
+                  <span className="inline-flex px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-[0.4em] text-red-500">Admin Login</span>
+                  <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9]">Admin<br/><span className="text-red-500 italic">Area</span></h1>
                 </div>
               </div>
 
@@ -85,7 +92,7 @@ function LoginContent() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2 group/input">
                   <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500 ml-1">Email</label>
                   <div className="relative">
@@ -95,7 +102,7 @@ function LoginContent() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="admin@shield.net"
-                      className="w-full bg-neutral-900/40 border border-red-900/20 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-red-500/50 focus:bg-red-500/5 transition-all placeholder:text-neutral-700/50"
+                      className="w-full bg-neutral-900/40 border border-red-900/20 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-red-500/50 focus:bg-red-500/5 transition-all placeholder:text-neutral-700/50"
                       required
                     />
                   </div>
@@ -115,7 +122,7 @@ function LoginContent() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-neutral-900/40 border border-red-900/20 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-red-500/50 focus:bg-red-500/5 transition-all placeholder:text-neutral-700/50"
+                      className="w-full bg-neutral-900/40 border border-red-900/20 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-red-500/50 focus:bg-red-500/5 transition-all placeholder:text-neutral-700/50"
                       required
                     />
                   </div>
@@ -127,7 +134,7 @@ function LoginContent() {
                   className="w-full relative group/btn-admin mt-4"
                 >
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600 to-accent-magenta rounded-2xl blur opacity-30 group-hover/btn-admin:opacity-70 transition duration-500" />
-                  <div className="relative w-full bg-gradient-to-r from-red-600 to-accent-magenta text-white font-black text-sm uppercase tracking-[0.3em] py-5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50">
+                  <div className="relative w-full bg-gradient-to-r from-red-600 to-accent-magenta text-white font-black text-sm uppercase tracking-[0.3em] py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50">
                     {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Login Now <ArrowRight className="w-5 h-5 group-hover/btn-admin:translate-x-2 transition-transform duration-300" /></>}
                   </div>
                 </button>
@@ -147,7 +154,7 @@ function LoginContent() {
 
   /* ─── USER VARIANT ────────────────────── */
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center pt-32 pb-12 px-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center pt-16 pb-6 px-6 relative overflow-hidden font-sans">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <motion.div 
           animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
@@ -170,22 +177,22 @@ function LoginContent() {
         <div className="relative group/card">
           <div className="absolute -inset-[1px] bg-gradient-to-br from-white/10 via-primary/20 to-secondary/20 rounded-[2.5rem] blur-[2px] opacity-20" />
 
-          <div className="relative bg-neutral-900/40 backdrop-blur-3xl p-10 md:p-12 rounded-[2.5rem] border border-white/5 space-y-10 shadow-2xl overflow-hidden">
-            <div className="text-center space-y-6 relative z-10">
+          <div className="relative bg-neutral-900/40 backdrop-blur-3xl p-8 md:p-10 rounded-[2.5rem] border border-white/5 space-y-6 shadow-2xl overflow-hidden">
+            <div className="text-center space-y-4 relative z-10">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="relative inline-flex w-24 h-24 items-center justify-center mx-auto group/logo"
+                className="relative inline-flex w-20 h-20 items-center justify-center mx-auto group/logo"
               >
                 <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-2xl transition-all group-hover/logo:blur-3xl" />
-                <Image src="/shield_v10.png" alt="SHIELD Logo" width={96} height={96} className="object-contain relative z-10 drop-shadow-[0_0_20px_rgba(244,130,31,0.4)]" />
+                <Image src="/shield_v10.png" alt="SHIELD Logo" width={80} height={80} className="object-contain relative z-10 drop-shadow-[0_0_20px_rgba(244,130,31,0.4)]" />
               </motion.div>
-              <div className="space-y-4">
-                <h1 className="text-4xl font-black tracking-tight uppercase leading-[0.9] text-white">Welcome <br/><span className="text-primary italic">Back.</span></h1>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9] text-white">Welcome <br/><span className="text-primary italic">Back.</span></h1>
                 <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.3em] ml-1">Login to your account</p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+            <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
               <div className="space-y-2 group/input">
                 <label className="text-[10px] font-black uppercase tracking-widest text-neutral-600 ml-1">Email</label>
                 <div className="relative">
@@ -194,8 +201,8 @@ function LoginContent() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full bg-neutral-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-primary/40 focus:bg-primary/5 transition-all placeholder:text-neutral-700/50"
+                    placeholder="Enter your email address"
+                    className="w-full bg-neutral-900/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-primary/40 focus:bg-primary/5 transition-all placeholder:text-neutral-700/50"
                     required
                   />
                 </div>
@@ -214,8 +221,8 @@ function LoginContent() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-neutral-900/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-primary/40 focus:bg-primary/5 transition-all placeholder:text-neutral-700/50"
+                    placeholder="Enter your security passcode"
+                    className="w-full bg-neutral-900/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold focus:outline-none focus:border-primary/40 focus:bg-primary/5 transition-all placeholder:text-neutral-700/50"
                     required
                   />
                 </div>
@@ -227,31 +234,27 @@ function LoginContent() {
                 className="w-full relative group/btn overflow-hidden mt-4"
               >
                 <div className="absolute -inset-0.5 bg-accent-gradient rounded-2xl blur opacity-30 group-hover/btn:opacity-60 transition duration-500" />
-                <div className="relative w-full bg-accent-gradient text-white font-black text-sm uppercase tracking-[0.3em] py-5 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50">
+                <div className="relative w-full bg-accent-gradient text-white font-black text-sm uppercase tracking-[0.3em] py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] disabled:opacity-50">
                   {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <>Login Now <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-1.5 transition-transform duration-300" /></>}
                 </div>
               </button>
             </form>
 
-            <div className="text-center relative z-10">
+            <div className="text-center relative z-10 pt-2">
               <p className="text-[10px] font-black uppercase tracking-widest text-neutral-600">
-                No account?{" "}
-                <Link href="/register" className="text-primary hover:text-white transition-colors ml-1">
-                  <span className="underline decoration-primary/30 underline-offset-8 decoration-2 hover:decoration-white transition-all">Sign Up</span>
+                New to the system?{" "}
+                <Link href="/register" className="text-primary hover:text-white transition-colors ml-1 font-black">
+                  Sign Up Here →
                 </Link>
               </p>
             </div>
           </div>
         </div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-8 text-center relative z-10">
-          <Link href="/register" className="text-[10px] font-black uppercase tracking-[0.4em] text-neutral-800 hover:text-primary transition-all">
-            Create Account →
-          </Link>
-        </motion.div>
       </motion.div>
     </div>
   );
+
 }
 
 export default function LoginPage() {

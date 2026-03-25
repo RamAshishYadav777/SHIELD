@@ -44,9 +44,9 @@ export const useLocation = () => {
         console.warn(`SHIELD Location Service: ${msg}`, error.message);
       },
       { 
-        enableHighAccuracy: false, // High accuracy is more likely to timeout/fail indoors
-        timeout: 15000, 
-        maximumAge: 30000 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 5000 
       }
     );
 

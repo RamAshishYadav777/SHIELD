@@ -52,7 +52,7 @@ export default function AdminIncidentsPage() {
 
   const handleVerify = async (id: string) => {
     try {
-      const res = await api.put(`/incidents/${id}/verify`);
+      const res = await api.put(`/admin/incidents/verify/${id}`);
       setIncidents(prev => prev.map(inc => inc._id === id ? res.data.data : inc));
       toast.success('Verification status updated');
     } catch (error) {
@@ -83,7 +83,7 @@ export default function AdminIncidentsPage() {
             onClick={async () => {
               toast.dismiss(t.id);
               try {
-                await api.delete(`/incidents/${id}`);
+                await api.delete(`/admin/incidents/${id}`);
                 setIncidents(prev => prev.filter(inc => inc._id !== id));
                 toast.success('Incident report deleted successfully');
               } catch (error) {

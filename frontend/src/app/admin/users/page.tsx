@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, Shield, Mail, Phone, Clock,
-  ArrowLeft, CheckCircle2, Lock, Unlock
+  ArrowLeft, CheckCircle2, Lock, Unlock, Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -53,7 +53,7 @@ export default function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/users/admin/all');
+      const res = await api.get('/admin/all');
       if (res.data.success) {
         setUsers(res.data.data);
       }
@@ -66,7 +66,7 @@ export default function UserManagementPage() {
 
   const handleToggleBlock = async (userId: string) => {
     try {
-      const res = await api.put(`/users/admin/block/${userId}`);
+      const res = await api.put(`/admin/users/block/${userId}`);
       if (res.data.success) {
         const updated = res.data.data;
         toast.success(updated.isBlocked ? 'User Blocked' : 'User Unblocked');
@@ -77,12 +77,27 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleAdminDeleteContact = async (userId: string, contactId: string) => {
+    try {
+      const res = await api.delete(`/admin/users/${userId}/contacts/${contactId}`);
+      if (res.data.success) {
+        toast.success('Contact removed');
+        setUsers(users.map(u => u._id === userId ? { ...u, emergencyContacts: res.data.data } : u));
+        if (selectedUserContacts?._id === userId) {
+            setSelectedUserContacts({ ...selectedUserContacts, emergencyContacts: res.data.data });
+        }
+      }
+    } catch (err) {
+      toast.error('Failed to remove contact');
+    }
+  };
+
   const filteredUsers = useMemo(() => users.filter(user => {
-    const isSearchMatch = 
+    const isSearchMatch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.phone.includes(searchQuery);
-    
+
     return isSearchMatch && user.role === filterRole;
   }), [users, searchQuery, filterRole]);
 
@@ -108,7 +123,7 @@ export default function UserManagementPage() {
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-accent-magenta transition-colors" size={20} />
-          <input 
+          <input
             type="text"
             placeholder="Search name, phone, email..."
             className="w-full bg-neutral-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm font-bold focus:outline-none focus:border-accent-magenta transition-all placeholder:text-neutral-700"
@@ -116,15 +131,15 @@ export default function UserManagementPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        
+
         <div className="flex p-1.5 bg-neutral-900 rounded-2xl border border-white/10 shrink-0">
           {(['user', 'admin'] as const).map((role) => (
             <button
               key={role}
               onClick={() => setFilterRole(role)}
               className={`px-10 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                filterRole === role 
-                  ? 'bg-accent-magenta text-white shadow-[0_10px_20px_rgba(185,5,94,0.3)]' 
+                filterRole === role
+                  ? 'bg-accent-magenta text-white shadow-[0_10px_20px_rgba(185,5,94,0.3)]'
                   : 'text-neutral-500 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -167,8 +182,8 @@ export default function UserManagementPage() {
                   <td className="px-10 py-6">
                     <div className="flex items-center gap-5">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg border-2 ${
-                        user.role === 'admin' 
-                          ? 'bg-accent-magenta/10 border-accent-magenta/30 text-accent-magenta' 
+                        user.role === 'admin'
+                          ? 'bg-accent-magenta/10 border-accent-magenta/30 text-accent-magenta'
                           : 'bg-white/5 border-white/10 text-white shadow-xl'
                       }`}>
                         {user.name.charAt(0).toUpperCase()}
@@ -192,7 +207,7 @@ export default function UserManagementPage() {
                       </div>
                       {filterRole === 'user' && (
                         <div className="mt-3 pt-2">
-                          <button 
+                          <button
                             onClick={() => setSelectedUserContacts(user)}
                             className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 text-[9px] font-black text-blue-400 rounded-lg uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all shadow-lg"
                           >
@@ -204,10 +219,10 @@ export default function UserManagementPage() {
                   </td>
                   <td className="px-10 py-6 text-center">
                     <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[9px] font-black uppercase border-2 ${
-                      user.isBlocked 
-                        ? 'bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
-                        : user.isVerified 
-                          ? 'bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.1)]' 
+                      user.isBlocked
+                        ? 'bg-red-500/10 border-red-500/30 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                        : user.isVerified
+                          ? 'bg-green-500/10 border-green-500/30 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
                           : 'bg-accent-orange/10 border-accent-orange/30 text-accent-orange shadow-[0_0_15px_rgba(244,130,31,0.1)]'
                     }`}>
                       {user.isBlocked ? <Lock size={11} /> : user.isVerified ? <CheckCircle2 size={11} /> : <Clock size={11} />}
@@ -216,7 +231,7 @@ export default function UserManagementPage() {
                   </td>
                   {filterRole === 'user' && (
                     <td className="px-10 py-6 text-center">
-                        <button 
+                        <button
                           onClick={() => handleToggleBlock(user._id)}
                           className={`mx-auto h-11 px-10 font-black uppercase text-[10px] tracking-[0.2em] rounded-xl transition-all shadow-2xl border-none text-white`}
                           style={{ backgroundColor: user.isBlocked ? '#22c55e' : '#ff0000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -251,8 +266,8 @@ export default function UserManagementPage() {
             <h3 className="text-xl font-black uppercase italic tracking-tight mb-2">
               <span className="text-blue-500">{selectedUserContacts.name}'s</span> Contacts
             </h3>
-            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-6">
-              Total Contact Slots: {selectedUserContacts.contactSlots || 3}
+            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-6 italic">
+              Available Slot Credits: {selectedUserContacts.contactSlots}
             </p>
 
             <div className="space-y-3">
@@ -263,8 +278,15 @@ export default function UserManagementPage() {
                       <p className="font-bold text-sm text-white uppercase tracking-tight">{contact.name}</p>
                       <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-0.5">{contact.relation}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center gap-4">
                       <p className="text-xs font-bold text-blue-400">{contact.phone}</p>
+                      <button 
+                        onClick={() => handleAdminDeleteContact(selectedUserContacts._id, contact._id)}
+                        className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors border-none"
+                        title="Remove Contact"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))

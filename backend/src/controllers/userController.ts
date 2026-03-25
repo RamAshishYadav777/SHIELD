@@ -162,45 +162,6 @@ class UserController {
     }
   }
 
-  // --- Admin Only Methods ---
-  
-  // list all registered users
-  async getAllUsers(req: AuthRequest, res: Response) {
-    try {
-      const users = await User.find().select('-password').sort({ createdAt: -1 });
-      res.status(200).json({ success: true, count: users.length, data: users });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Fetch all users failed: ' + error.message });
-    }
-  }
-
-  // block/unblock a member
-  async toggleBlockUser(req: AuthRequest, res: Response) {
-    try {
-      const user = await User.findById(req.params.id);
-      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-      
-      // Toggle status
-      user.isBlocked = !user.isBlocked;
-      await user.save();
-      
-      res.status(200).json({ success: true, data: user });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Blocking toggle failed: ' + error.message });
-    }
-  }
-
-  // admin-level deletion
-  async adminDeleteUser(req: AuthRequest, res: Response) {
-    try {
-      const user = await User.findByIdAndDelete(req.params.id);
-      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-      res.status(200).json({ success: true, message: 'User deleted successfully' });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'User deletion failed: ' + error.message });
-    }
-  }
-
   // --- Public Methods ---
 
   // get general stats for the landing page

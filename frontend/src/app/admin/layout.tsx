@@ -45,19 +45,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
+  const [mounted, setMounted] = React.useState(false);
+  
   useEffect(() => {
-    if (!loading) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !loading) {
       if (!user) {
         router.push('/');
       } else if (user.role !== 'admin') {
         router.push('/dashboard');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, mounted]);
 
-  if (loading || !user || user.role !== 'admin') {
+  if (!mounted || loading || !user || user.role !== 'admin') {
     return (
-      <div className="h-screen flex items-center justify-center bg-black text-white/20 uppercase font-black text-[10px] tracking-[0.5em] animate-pulse">
+      <div id="admin-secure-gate" className="h-screen flex items-center justify-center bg-black text-white/20 uppercase font-black text-[10px] tracking-[0.5em] animate-pulse">
         Shield Secure Area
       </div>
     );

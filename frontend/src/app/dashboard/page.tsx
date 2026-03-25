@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [safeHubs, setSafeHubs] = useState<any[]>([]);
+  const [myReports, setMyReports] = useState<any[]>([]);
   const [nearbyCount, setNearbyCount] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<string>('--:-- --');
   const location = useLocation();
@@ -81,14 +82,16 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      const [historyRes, contactsRes] = await Promise.all([
+      const [historyRes, contactsRes, reportsRes] = await Promise.all([
         api.get('/sos/history'),
-        api.get('/users/contacts')
+        api.get('/users/contacts'),
+        api.get('/incidents/my-reports')
       ]);
       setHistory(historyRes.data.data.slice(0, 3));
       setContacts(contactsRes.data.data.slice(0, 3));
-    } catch (e) {
-      console.error('Core data fetch failed');
+      setMyReports(reportsRes.data.data.slice(0, 3));
+    } catch (e: any) {
+      console.error('Core data fetch failed:', e);
     }
   };
 
@@ -193,7 +196,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+    <div className="space-y-8 animate-in fade-in duration-300 pb-20">
       
       {/* ── SAFETY STATUS CARD ── */}
       <Card className="p-8 border-white/5 bg-[#120B16] bg-gradient-to-r from-[#120B16] to-[#1D1024] rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 h-full shadow-2xl overflow-hidden relative border-none">
@@ -201,21 +204,27 @@ export default function DashboardPage() {
         <div className="flex items-center gap-8 w-full">
           {/* Circular Score Profile */}
           <div className="relative flex items-center justify-center shrink-0">
-             <svg className="w-28 h-28 transform -rotate-90">
-               <circle cx="56" cy="56" r="48" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
-               <circle 
-                 cx="56" 
-                 cy="56" 
-                 r="48" 
-                 stroke="#F4821F" 
-                 strokeWidth="8" 
-                 fill="none" 
-                 strokeDasharray="301.59" 
-                 strokeDashoffset={301.59 - (301.59 * (prediction?.safetyScore || 75)) / 100} 
-                 className="transition-all duration-1000 ease-out" 
-                 strokeLinecap="round" 
-               />
-             </svg>
+             <motion.div
+               animate={(!location || !prediction) ? { rotate: 360 } : { rotate: 0 }}
+               transition={(!location || !prediction) ? { duration: 4, repeat: Infinity, ease: "linear" } : { duration: 0.5 }}
+               className="relative"
+             >
+               <svg className="w-28 h-28 transform -rotate-90">
+                 <circle cx="56" cy="56" r="48" stroke="rgba(255,255,255,0.05)" strokeWidth="8" fill="none" />
+                 <circle 
+                   cx="56" 
+                   cy="56" 
+                   r="48" 
+                   stroke="#F4821F" 
+                   strokeWidth="8" 
+                   fill="none" 
+                   strokeDasharray="301.59" 
+                   strokeDashoffset={301.59 - (301.59 * (prediction?.safetyScore || 75)) / 100} 
+                   className="transition-all duration-1000 ease-out" 
+                   strokeLinecap="round" 
+                 />
+               </svg>
+             </motion.div>
              <div className="absolute font-bold text-3xl text-accent-orange">
                {prediction ? prediction.safetyScore : '--'}
              </div>
@@ -297,6 +306,54 @@ export default function DashboardPage() {
             </div>
         </div>
       </Card>
+
+      {/* ── MY REPORTS STATUS ── */}
+      {myReports.length > 0 && (
+        <Card className="p-8 border-white/5 bg-[#0F0C13] rounded-[2.5rem] shadow-2xl border-none">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-bold flex items-center gap-3 text-white italic transition-all group">
+              <Shield size={24} className="text-accent-orange group-hover:rotate-12 duration-500" /> 
+              My Reported <span className="text-white/40 not-italic">Incidents</span>
+            </h3>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Live Tracking</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {myReports.map((report) => (
+              <div key={report._id} className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-accent-orange/5 blur-2xl pointer-events-none group-hover:bg-accent-orange/10 transition-colors" />
+                <div className="flex flex-col gap-4 relative z-10">
+                   <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 bg-white/[0.05] text-white/40 text-[9px] font-black uppercase tracking-widest rounded-full">{report.category}</span>
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
+                        report.isVerified 
+                          ? 'bg-green-500/10 text-green-500 border-green-500/20' 
+                          : 'bg-accent-orange/10 text-accent-orange border-accent-orange/20 animate-pulse'
+                      }`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${report.isVerified ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-accent-orange shadow-[0_0_8px_#F4821F]'}`} />
+                        {report.isVerified ? 'Approved' : 'Pending'}
+                      </div>
+                   </div>
+                   <div>
+                      <h4 className="font-bold text-white text-base truncate">{report.title}</h4>
+                      <p className="text-xs text-text-secondary mt-1 line-clamp-1">{report.location?.address || 'Unknown Location'}</p>
+                   </div>
+                   <div className="flex items-center justify-between mt-2 pt-4 border-t border-white/5">
+                      <span className="text-[10px] text-text-secondary font-medium tracking-wide">
+                        {new Date(report.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </span>
+                      <motion.button 
+                        whileHover={{ scale: 1.1, x: 2 }}
+                        className="text-accent-orange hover:text-white transition-all"
+                      >
+                         <ArrowUpRight size={18} />
+                      </motion.button>
+                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ── LOWER CONTENT PRESERVED ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

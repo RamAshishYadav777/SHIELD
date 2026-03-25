@@ -1,0 +1,147 @@
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
+import User from '../models/User';
+import Incident from '../models/Incident';
+import SafeZone from '../models/SafeZone';
+import logger from '../utils/logger';
+
+class AdminController {
+  // list all registered users
+  async getAllUsers(req: AuthRequest, res: Response) {
+    try {
+      const users = await User.find().select('-password').sort({ createdAt: -1 });
+      logger.info(`Admin ${req.user.name} fetched all user records.`);
+      res.status(200).json({ 
+        success: true, 
+        count: users.length, 
+        data: users 
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Fetch all users failed: ' + error.message });
+    }
+  }
+
+  // block/unblock a member
+  async toggleBlockUser(req: AuthRequest, res: Response) {
+    try {
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      
+      // Update status
+      user.isBlocked = !user.isBlocked;
+      await user.save();
+      
+      const status = user.isBlocked ? 'blocked' : 'unblocked';
+      logger.info(`Admin ${req.user.name} ${status} user: ${user.email}`);
+      
+      res.status(200).json({ 
+        success: true, 
+        message: `User ${status} successfully.`,
+        data: user 
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Blocking toggle failed: ' + error.message });
+    }
+  }
+
+  // admin-level deletion
+  async adminDeleteUser(req: AuthRequest, res: Response) {
+    try {
+      const user = await User.findByIdAndDelete(req.params.id);
+      if (!user) return res.status(404).json({ success: false, message: 'User record not found.' });
+      
+      logger.warn(`Admin ${req.user.name} PERMANENTLY DELETED user: ${user.email}`);
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'User account has been permanently removed from the SHIELD network.' 
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'User deletion failed: ' + error.message });
+    }
+  }
+
+  // --- Incident Management ---
+
+  // verify/unverify an incident
+  async toggleIncidentVerification(req: AuthRequest, res: Response) {
+    try {
+      const incident = await Incident.findById(req.params.id);
+      if (!incident) return res.status(404).json({ success: false, message: 'Incident not found.' });
+
+      incident.isVerified = !incident.isVerified;
+      await incident.save();
+
+      const status = incident.isVerified ? 'verified' : 'unverified';
+      logger.info(`Admin ${req.user.name} marked incident ${incident._id} as ${status}.`);
+
+      res.status(200).json({ success: true, data: incident });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Incident verification failed: ' + error.message });
+    }
+  }
+
+  // admin-specific incident removal
+  async adminDeleteIncident(req: AuthRequest, res: Response) {
+    try {
+      const incident = await Incident.findByIdAndDelete(req.params.id);
+      if (!incident) return res.status(404).json({ success: false, message: 'Incident not found.' });
+
+      logger.warn(`Admin ${req.user.name} DELETED incident report: ${incident._id}`);
+
+      res.status(200).json({ success: true, message: 'Incident report permanently removed.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Incident deletion failed: ' + error.message });
+    }
+  }
+
+  // --- Safe Zone Management ---
+
+  // manually register a new safe hub
+  async adminCreateSafeZone(req: AuthRequest, res: Response) {
+    try {
+      const zone = await SafeZone.create(req.body);
+      logger.info(`Admin ${req.user.name} REGISTERED NEW SAFE HUB: ${zone.name}`);
+      res.status(201).json({ success: true, data: zone });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Safe hub registration failed: ' + error.message });
+    }
+  }
+
+  // hard-delete an incorrect safety hub
+  async adminDeleteSafeZone(req: AuthRequest, res: Response) {
+    try {
+      const zone = await SafeZone.findByIdAndDelete(req.params.id);
+      if (!zone) return res.status(404).json({ success: false, message: 'Safety hub record not found.' });
+
+      logger.warn(`Admin ${req.user.name} REMOVED safe hub: ${zone.name}`);
+      res.status(200).json({ success: true, message: 'Safety hub record permanently removed from SHIELD.' });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Safe hub deletion failed: ' + error.message });
+    }
+  }
+
+  // Admin: Remove a specific contact for any user
+  async adminDeleteUserContact(req: AuthRequest, res: Response) {
+    try {
+      const { userId, contactId } = req.params;
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+      user.emergencyContacts = user.emergencyContacts.filter(
+        (c: any) => c._id!.toString() !== contactId
+      );
+
+      await user.save();
+      logger.info(`Admin ${req.user.name} REMOVED contact ${contactId} from user ${userId}`);
+      
+      res.status(200).json({ success: true, data: user.emergencyContacts });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Failed to remove contact: ' + error.message });
+    }
+  }
+}
+
+export default new AdminController();
+
+

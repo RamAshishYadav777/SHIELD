@@ -25,28 +25,21 @@ export const useAuth = () => {
         return null; // Guest or expired
       }
     },
-    staleTime: 0,
+    initialData: () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('shield_user');
+        if (stored) {
+          try { return JSON.parse(stored); } catch (e) { return null; }
+        }
+      }
+      return null;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes to avoid redundant checks during a single session
     retry: false,
     refetchOnWindowFocus: true,
   });
 
-  // Hydrate Redux state from localStorage early to avoid flickering (speculative set)
-  useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
-      const stored = localStorage.getItem('shield_user');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          dispatch(setUser(parsed));
-        } catch (e) {
-          localStorage.removeItem('shield_user');
-        }
-      } else {
-        // If nothing is stored, and it's not currently loading from react-query,
-        // then it's probably a guest. Give it a moment then settle.
-      }
-    }
-  }, [dispatch, user]);
+  // Redux state is now hydrated synchronously in authSlice.ts to prevent flickering
 
   // Keep Redux in sync with React Query
   useEffect(() => {

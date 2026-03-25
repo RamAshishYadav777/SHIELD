@@ -84,7 +84,16 @@ class AuthController {
       const { email, password } = req.body;
 
       const user = await User.findOne({ email }).select('+password');
-      if (!user || !(await user.comparePassword(password))) {
+      
+      if (user) {
+        const match = await user.comparePassword(password);
+        
+        if (!match) {
+          logger.info(`Login failed for: ${email} - Password mismatch`);
+          return res.status(401).json({ success: false, message: 'Bad credentials, try again' });
+        }
+      } else {
+        logger.info(`Login failed: ${email} - User not found`);
         return res.status(401).json({ success: false, message: 'Bad credentials, try again' });
       }
 

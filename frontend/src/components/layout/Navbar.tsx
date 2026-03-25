@@ -7,15 +7,27 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import { useUI } from '@/hooks/useUI';
+import dynamic from 'next/dynamic';
+
+const NavbarActions = dynamic(() => import('./NavbarActions').then(m => m.NavbarActions), { 
+  ssr: false,
+  loading: () => <div className="h-10 w-[200px]" />
+});
 
 export const Navbar = memo(() => {
   const { user, loading } = useAuth();
   const { setSidebarOpen } = useUI();
   const pathname = usePathname();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isDashboard = useMemo(() => pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin'), [pathname]);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] h-16 md:h-20 bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 md:px-12 flex items-center justify-between">
+    <nav className="fixed top-0 left-0 right-0 z-[9999] h-16 md:h-20 bg-black/95 backdrop-blur-xl border-b border-white/5 px-4 md:px-12 flex items-center justify-between">
       {/* ── LEFT: BOLD LOGO ── */}
       <div className="flex items-center gap-6">
         {isDashboard && (
@@ -62,50 +74,8 @@ export const Navbar = memo(() => {
       </div>
 
       {/* ── RIGHT: ACTIONS ── */}
-      <div className="flex items-center gap-3">
-        {loading ? (
-          <div className="flex items-center gap-3 w-40 h-10 bg-white/5 rounded-full animate-pulse border border-white/5" />
-        ) : user ? (
-          <div className="flex items-center gap-5">
-            <div className="hidden sm:flex items-center gap-3 mr-2 bg-white/[0.03] border border-white/5 py-1.5 px-2 rounded-full pr-4">
-              <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-sm shadow-[0_0_15px_rgba(244,130,31,0.2)]">
-                 {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex flex-col justify-center leading-none">
-                <span className="text-[9px] font-black tracking-widest text-primary/60 uppercase">Authenticated</span>
-                <span className="text-sm font-bold text-white capitalize mt-1">{user.name}</span>
-              </div>
-            </div>
-            <Link
-              href={user.role === 'admin' ? "/admin" : "/dashboard"}
-              className="relative px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-white overflow-hidden group border border-primary/20"
-              style={{ background: "linear-gradient(135deg, #F4821F, #B9055E)" }}
-            >
-              <span className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-all duration-300" />
-              <span className="relative flex items-center gap-1.5 leading-none font-black">
-                {user.role === 'admin' ? 'Admin Control' : 'Member Area'}
-              </span>
-            </Link>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 animate-in fade-in duration-500">
-            <Link
-              href="/login"
-              className="relative px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.2em] transition-all hover:text-primary text-white group"
-            >
-              Sign In
-              <span className="absolute bottom-1 left-0 h-0.5 w-0 group-hover:w-full bg-primary transition-all duration-300" />
-            </Link>
-
-            <Link
-              href="/register"
-              className="relative px-8 py-3 rounded-full text-[12px] font-black uppercase tracking-[0.2em] text-black bg-white overflow-hidden group shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:text-white transition-all duration-300"
-            >
-              <span className="absolute inset-0 bg-primary translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              <span className="relative z-10">Join Now</span>
-            </Link>
-          </div>
-        )}
+      <div className="flex items-center gap-3 min-w-[200px] justify-end">
+        <NavbarActions />
       </div>
     </nav>
   );

@@ -9,13 +9,13 @@ const router = express.Router();
 // get ai safety score
 router.get('/prediction', protect, predictionController.getSafetyPrediction);
 
+router.get('/my-reports', protect, incidentController.getMyIncidents);
+
 // core incident routes
 router.route('/')
   .get(incidentController.getIncidents)
   .post(protect, upload.single('image'), incidentController.createIncident);
 
 router.get('/:id', incidentController.getIncidentById);
-router.put('/:id/verify', protect, authorize('admin'), incidentController.toggleVerification);
-router.delete('/:id', protect, authorize('admin'), incidentController.deleteIncident);
 
 export default router;

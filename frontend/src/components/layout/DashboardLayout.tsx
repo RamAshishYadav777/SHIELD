@@ -50,20 +50,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
 
+  const [mounted, setMounted] = React.useState(false);
+  
   React.useEffect(() => {
-    if (!loading && !user) {
+    setMounted(true);
+  }, []);
+
+  // Handle redirection if confirmed Guest
+  React.useEffect(() => {
+    if (mounted && !loading && !user) {
       router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, mounted]);
 
-  if (loading || !user) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-black text-white/20 uppercase font-black text-[10px] tracking-[0.5em] animate-pulse">
-        Shield Secure Area
-      </div>
-    );
-  }
-
+  // We define menu items here
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Overview', href: '/dashboard' },
     { icon: <div className="w-5 h-5 relative"><Image src="/shield_v10.png" alt="Logo" width={20} height={20} className="object-contain" /></div>, label: 'Local Chat', href: '/dashboard/watch' },
@@ -73,23 +73,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: <Users size={20} />, label: 'Contacts', href: '/dashboard/contacts' },
   ];
 
+  // If we are definitely a Guest (mounted and no user), show nothing while redirecting
+  if (mounted && !loading && !user) return null;
+
   return (
     <div className="flex h-screen bg-bg-primary overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[9990]"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 w-64 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass border-y-0 border-l-0 z-50 transition-transform duration-300
+        fixed lg:static inset-y-0 left-0 w-64 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass border-y-0 border-l-0 z-[9991] transition-transform duration-300
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* Sidebar branding removed as requested */}
-
         <nav className="mt-8 flex-1">
           {menuItems.map((item) => (
             <SidebarItem 
@@ -120,15 +121,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header removed and integrated into global Navbar */}
-
-
-        {/* Page Area */}
         <main className="flex-1 overflow-y-auto p-8 pt-40 relative">
            <FlashAlerts />
            <SafeZoneDetector />
            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-accent-magenta/5 rounded-full blur-[100px] -z-10"></div>
-           {children}
+           
+           {/* Only render children when mounted and user is confirmed */}
+           {!mounted || (loading && !user) ? (
+             <div className="h-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-10 h-10 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                  <div className="text-white/10 uppercase font-black text-[9px] tracking-[0.4em] animate-pulse">Initializing Interface</div>
+                </div>
+             </div>
+           ) : (
+             children
+           )}
         </main>
       </div>
     </div>

@@ -20,7 +20,8 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    const secret = process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    const decoded = jwt.verify(token, secret as string) as any;
     req.user = await User.findById(decoded.id);
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'User associated with this token no longer exists' });

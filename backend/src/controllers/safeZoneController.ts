@@ -41,28 +41,7 @@ class SafeZoneController {
     }
   }
 
-  // adding a new safe spot - admin only
-  async createSafeZone(req: Request, res: Response) {
-    try {
-      const zone = await SafeZone.create(req.body);
-      res.status(201).json({ success: true, data: zone });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Couldnt add safe zone: ' + error.message });
-    }
-  }
-
-  // delete a hub that is incorrect
-  async deleteSafeZone(req: Request, res: Response) {
-    try {
-      const zone = await SafeZone.findByIdAndDelete(req.params.id);
-      if (!zone) {
-        return res.status(404).json({ success: false, message: 'Hub not found' });
-      }
-      res.status(200).json({ success: true, message: 'Hub permanently removed' });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Delete failed: ' + error.message });
-    }
-  }
 }
 
 export default new SafeZoneController();
+

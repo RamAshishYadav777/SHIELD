@@ -9,6 +9,10 @@ interface User {
   isVerified: boolean;
   contactSlots: number;
   createdAt: string;
+  location?: {
+    type: string;
+    coordinates: [number, number];
+  };
 }
 
 interface AuthState {
@@ -16,9 +20,23 @@ interface AuthState {
   loading: boolean;
 }
 
+const getInitialUser = () => {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('shield_user');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        return null;
+      }
+    }
+  }
+  return null;
+};
+
 const initialState: AuthState = {
-  user: null,
-  loading: false,
+  user: getInitialUser(),
+  loading: typeof window === 'undefined' || !getInitialUser(), 
 };
 
 const authSlice = createSlice({

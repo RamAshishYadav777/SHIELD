@@ -11,7 +11,7 @@ const nextConfig: any = {
       headers: [
         {
           key: "Cache-Control",
-          value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+          value: "public, max-age=604800, stale-while-revalidate=86400",
         },
       ],
     },
@@ -19,3 +19,4 @@ const nextConfig: any = {
 };
 
 export default nextConfig;
+
