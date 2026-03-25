@@ -19,7 +19,7 @@ const sendEmail = async (options: EmailOptions) => {
   try {
     await sgMail.send({
       from: {
-        email: process.env.EMAIL_FROM || 'noreply@shield.app',
+        email: process.env.EMAIL_FROM || process.env.SENDGRID_FROM_EMAIL || 'noreply@shield.app',
         name: 'SHIELD Safety System'
       },
       to: options.email,
