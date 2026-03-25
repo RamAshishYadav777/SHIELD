@@ -6,7 +6,7 @@ import logger from '../utils/logger';
  * If the connection fails, it logs the error and terminates the process.
  */
 const dbConnect = async (retries = 5): Promise<void> => {
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shield';
+  const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/shield';
 
   for (let i = 0; i < retries; i++) {
     try {

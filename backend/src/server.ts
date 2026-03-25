@@ -20,10 +20,15 @@ import dbConnect from './config/dbConnect';
 dotenv.config();
 
 // Production Safety Check: Ensure critical security keys are present
-const REQUIRED_ENV = ['JWT_SECRET', 'MONGO_URI', 'SESSION_SECRET', 'MONGODB_URI'];
-const missingEnv = REQUIRED_ENV.filter(key => !(process.env[key] || process.env[key.replace('MONGODB_URI', 'MONGO_URI')]));
-if (missingEnv.length > 0 && process.env.NODE_ENV === 'production') {
-  console.error(`ERROR: Missing critical environment variables: ${missingEnv.join(', ')}`);
+const REQUIRED_ENV = ['JWT_SECRET', 'SESSION_SECRET'];
+const missingEnv = REQUIRED_ENV.filter(key => !process.env[key]);
+
+// Explicit check for MongoDB URI (can be either MONGODB_URI or MONGO_URI)
+const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
+
+if ((missingEnv.length > 0 || !dbUri) && process.env.NODE_ENV === 'production') {
+  const allMissing = !dbUri ? [...missingEnv, 'MONGODB_URI'] : missingEnv;
+  console.error(`ERROR: Missing critical environment variables: ${allMissing.join(', ')}`);
   process.exit(1);
 }
 
