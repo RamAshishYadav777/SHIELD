@@ -294,7 +294,12 @@ class AuthController {
 
       await user.save();
 
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      if (!process.env.FRONTEND_URL) {
+        logger.warn('FRONTEND_URL is not defined in environment variables. Falling back to localhost.');
+      }
+
+      const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
       const message = `You requested a password reset. Please click: ${resetUrl}`;
       const html = `
         <h1>Password Reset</h1>
