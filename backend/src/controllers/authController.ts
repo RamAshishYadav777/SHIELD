@@ -220,8 +220,8 @@ class AuthController {
       const user = await User.findOne({
         email,
         verificationOTP: otp,
-        verificationOTPExpire: { $gt: Date.now() }
-      });
+        verificationOTPExpire: { $gt: new Date() }
+      }).select('+password');
 
       if (!user) {
         return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
@@ -245,7 +245,7 @@ class AuthController {
   async resendOTP(req: Request, res: Response) {
     try {
       const { email } = req.body;
-      const user = await User.findOne({ email, isVerified: false });
+      const user = await User.findOne({ email, isVerified: false }).select('+password');
 
       if (!user) {
         return res.status(404).json({ success: false, message: 'User not found or already verified' });
@@ -282,7 +282,7 @@ class AuthController {
   async forgotPassword(req: Request, res: Response) {
     try {
       const { email } = req.body;
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).select('+password');
 
       if (!user) {
         return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
@@ -312,6 +312,7 @@ class AuthController {
         res.status(500).json({ success: false, message: 'Couldn\'t send email' });
       }
     } catch (error: any) {
+      logger.error(`Forgot Password Error: ${error.message}`);
       res.status(500).json({ success: false, message: 'Forgot password error: ' + error.message });
     }
   }
@@ -326,8 +327,8 @@ class AuthController {
 
       const user = await User.findOne({
         resetPasswordToken: hashedToken,
-        resetPasswordExpire: { $gt: Date.now() }
-      });
+        resetPasswordExpire: { $gt: new Date() }
+      }).select('+password');
 
       if (!user) {
         return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
@@ -340,6 +341,7 @@ class AuthController {
 
       res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error: any) {
+      logger.error(`Reset Password Error: ${error.message}`);
       res.status(500).json({ success: false, message: 'Reset password error: ' + error.message });
     }
   }

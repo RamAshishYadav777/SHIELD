@@ -33,20 +33,20 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${outfit.variable} antialiased`}>
         <Providers>
-            <Navbar />
-            {children}
-            <ConditionalFooter />
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                style: {
-                  background: '#0a0a0a',
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(10px)',
-                },
-              }}
-            />
+          <Navbar />
+          {children}
+          <ConditionalFooter />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: '#0a0a0a',
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)',
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

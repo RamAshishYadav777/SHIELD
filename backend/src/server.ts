@@ -14,7 +14,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import logger from './utils/logger';
 import dbConnect from './config/dbConnect';
-// Removed unused import
+
 
 // Load environment variables
 dotenv.config();
@@ -93,7 +93,7 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 
 // Rate limiting - Tiered Strategy
 const defaultLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 100, // 100 requests per 15 minutes for general API
   standardHeaders: true,
   legacyHeaders: false,
@@ -133,7 +133,7 @@ import chatController from './controllers/chatController';
 // Socket.io connection
 io.on('connection', (socket) => {
   logger.info(`New client connected: ${socket.id}`);
-  
+
   socket.on('join', (userId: string) => {
     socket.join(userId);
     logger.info(`User ${userId} joined their private room`);
@@ -144,8 +144,8 @@ io.on('connection', (socket) => {
     const neighborhoodId = `neighborhood-${lat.toFixed(1)}-${lng.toFixed(1)}`;
     socket.join(neighborhoodId);
     // @ts-ignore
-    socket.neighborhoodId = neighborhoodId; 
-    
+    socket.neighborhoodId = neighborhoodId;
+
     const count = io.sockets.adapter.rooms.get(neighborhoodId)?.size || 0;
     io.to(neighborhoodId).emit('neighborhood-count-update', count);
     logger.info(`Socket ${socket.id} joined ${neighborhoodId}. Total: ${count}`);
@@ -154,7 +154,7 @@ io.on('connection', (socket) => {
   socket.on('send-neighborhood-message', async (data: any) => {
     const { userId, content, lat, lng } = data;
     const neighborhoodId = `neighborhood-${lat.toFixed(1)}-${lng.toFixed(1)}`;
-    
+
     const savedMsg = await chatController.saveMessage({
       user: userId,
       content,
@@ -177,7 +177,7 @@ io.on('connection', (socket) => {
           updatedAt: new Date()
         }
       });
-      
+
       // Emit to trusted peers who are following this user
       socket.to(`room-${userId}`).emit('location-received', {
         userId,
@@ -201,8 +201,8 @@ io.on('connection', (socket) => {
     // @ts-ignore
     const nId = socket.neighborhoodId;
     if (nId) {
-       const count = io.sockets.adapter.rooms.get(nId)?.size || 0;
-       io.to(nId).emit('neighborhood-count-update', count);
+      const count = io.sockets.adapter.rooms.get(nId)?.size || 0;
+      io.to(nId).emit('neighborhood-count-update', count);
     }
     logger.info('Client disconnected');
   });
@@ -238,8 +238,8 @@ app.get('/', (req: Request, res: Response) => {
 
 // Health Check for monitoring
 app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ 
-    status: 'UP', 
+  res.status(200).json({
+    status: 'UP',
     timestamp: new Date(),
     uptime: process.uptime(),
     memory: process.memoryUsage()
@@ -247,9 +247,9 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 app.get('/api/status', (req: Request, res: Response) => {
-  res.status(200).json({ 
-    success: true, 
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' 
+  res.status(200).json({
+    success: true,
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
@@ -264,8 +264,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  res.status(500).json({ 
-    success: false, 
+  res.status(500).json({
+    success: false,
     message: 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : {}
   });
