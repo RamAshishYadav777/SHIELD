@@ -294,17 +294,41 @@ class AuthController {
 
       await user.save();
 
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      if (!process.env.FRONTEND_URL) {
-        logger.warn('FRONTEND_URL is not defined in environment variables. Falling back to localhost.');
+      // Robust identification of Frontend URL
+      let frontendUrl = process.env.FRONTEND_URL;
+      
+      if (!frontendUrl) {
+          const origin = req.get('origin');
+          const referer = req.get('referer');
+          
+          if (origin) {
+              frontendUrl = origin;
+          } else if (referer) {
+              try {
+                  const refUrl = new URL(referer);
+                  frontendUrl = `${refUrl.protocol}//${refUrl.host}`;
+              } catch (e) {
+                  frontendUrl = 'http://localhost:3000';
+              }
+          } else {
+              frontendUrl = 'http://localhost:3000';
+              logger.warn('FRONTEND_URL is not defined in environment variables and could not be determined from request. Falling back to localhost.');
+          }
       }
 
       const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
       const message = `You requested a password reset. Please click: ${resetUrl}`;
       const html = `
-        <h1>Password Reset</h1>
-        <p>Click the button below to reset your password. This link expires in 30 minutes.</p>
-        <a href="${resetUrl}" style="padding: 10px 20px; background-color: #c7004c; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a>
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #333; text-align: center;">Reset Your Password</h2>
+          <p>We received a request to reset your password for your SHIELD account. Click the button below to proceed. This link will expire in 30 minutes.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="padding: 14px 28px; background-color: #ff8c00; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset My Password</a>
+          </div>
+          <p style="color: #666; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+          <p style="color: #999; font-size: 12px; text-align: center;">SHIELD - Advanced Security Protocol</p>
+        </div>
       `;
 
       try {
@@ -325,10 +349,14 @@ class AuthController {
   // reset password
   async resetPassword(req: Request, res: Response) {
     try {
-      const { token } = req.query;
+      const token = req.query.token;
       const { password } = req.body;
 
-      const hashedToken = crypto.createHash('sha256').update(token as string).digest('hex');
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ success: false, message: 'Valid reset token is required' });
+      }
+
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
       const user = await User.findOne({
         resetPasswordToken: hashedToken,
