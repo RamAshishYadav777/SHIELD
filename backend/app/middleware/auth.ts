@@ -27,7 +27,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(401).json({ success: false, message: 'User associated with this token no longer exists' });
     }
     
-    // Safety check for blocked accounts
+    // check blocked user
     if (req.user.isBlocked) {
       return res.status(403).json({ success: false, message: 'Your account has been restricted by an administrator.' });
     }

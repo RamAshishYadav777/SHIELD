@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
-// import mongoSanitize from 'express-mongo-sanitize'; // Removed due to Express 5 compatibility issues
+// sanitize inputs
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import flash from 'connect-flash';
@@ -12,18 +12,18 @@ import { Server } from 'socket.io';
 import morgan from 'morgan';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import logger from './utils/logger';
-import dbConnect from './config/dbConnect';
+import logger from './app/utils/logger';
+import dbConnect from './app/config/dbConnect';
 
 
-// Load environment variables
+// env vars
 dotenv.config();
 
-// Production Safety Check: Ensure critical security keys are present
+// check envs
 const REQUIRED_ENV = ['JWT_SECRET', 'SESSION_SECRET'];
 const missingEnv = REQUIRED_ENV.filter(key => !process.env[key]);
 
-// Explicit check for MongoDB URI (can be either MONGODB_URI or MONGO_URI)
+// db uri
 const dbUri = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 if ((missingEnv.length > 0 || !dbUri) && process.env.NODE_ENV === 'production') {
@@ -36,26 +36,18 @@ const app = express();
 const server = http.createServer(app);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173',
-  'https://shield-gilt.vercel.app',
-  'https://shield-frontend.vercel.app'
+  'http://localhost:3000', 'https://shield-gilt.vercel.app'
 ].filter(Boolean) as string[];
 
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
+  cors: { origin: allowedOrigins.length > 0 ? allowedOrigins : "*", methods: ["GET", "POST"], credentials: true }
 });
 
-// App-wide access to socket instance
+// socket access
 app.set('io', io);
 
-// Middleware
-app.set('trust proxy', process.env.NODE_ENV === 'production'); // For production behind Nginx/Vercel/Render
+// middleware
+app.set('trust proxy', process.env.NODE_ENV === 'production');
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -63,54 +55,36 @@ app.use(cors({
   origin: allowedOrigins.length > 0 ? allowedOrigins : true,
   credentials: true
 }));
-app.use(compression()); // Compress responses
+app.use(compression());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-// Basic Sanitization to prevent MongoDB Operator Injection
-const sanitizeObject = (obj: any) => {
+// sanitize ops
+const sanitize = (obj: any) => {
   if (obj && typeof obj === 'object') {
-    for (const key in obj) {
-      if (key.startsWith('$')) {
-        delete obj[key];
-      } else {
-        sanitizeObject(obj[key]);
-      }
-    }
+    Object.keys(obj).forEach(k => k.startsWith('$') ? delete obj[k] : sanitize(obj[k]));
   }
 };
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.body) sanitizeObject(req.body);
-  if (req.query) sanitizeObject(req.query);
-  if (req.params) sanitizeObject(req.params);
+app.use((req, res, next) => {
+  [req.body, req.query, req.params].forEach(sanitize);
   next();
 });
 
-// HTTP Request logging
+// logs
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', {
   stream: { write: (message) => logger.http(message.trim()) }
 }));
 
-// Rate limiting - Tiered Strategy
-const defaultLimiter = rateLimit({
+const limiter = (max: number) => rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100, // 100 requests per 15 minutes for general API
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes' }
+  max,
+  message: { success: false, message: 'Too many requests' }
 });
 
-const criticalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100, // Less strict to allow normal React Query refetch loops
-  message: { success: false, message: 'High-frequency critical request detected. Cooling down.' }
-});
+app.use('/api/', limiter(100));
+app.use(['/api/auth/', '/api/sos/'], limiter(100));
 
-app.use('/api/', defaultLimiter);
-app.use('/api/auth/', criticalLimiter);
-app.use('/api/sos/', criticalLimiter);
-
-// Session and Flash
+// session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secret',
   resave: false,
@@ -118,19 +92,19 @@ app.use(session({
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 24 // 1 day
+    maxAge: 1000 * 60 * 60 * 24
   }
 }));
 app.use(flash());
 
-// Database connection
+// db
 dbConnect();
 
-// Models and Controllers (imported for Socket.io)
-import User from './models/User';
-import chatController from './controllers/chatController';
+// socket imports
+import User from './app/models/User';
+import chatController from './app/controllers/chatController';
 
-// Socket.io connection
+// socket handlers
 io.on('connection', (socket) => {
   logger.info(`New client connected: ${socket.id}`);
 
@@ -140,7 +114,6 @@ io.on('connection', (socket) => {
   });
 
   socket.on('join-neighborhood', ({ lat, lng }: { lat: number, lng: number }) => {
-    // Shard by 1 decimal point (~111km area roughly at equator, but depends on lat)
     const neighborhoodId = `neighborhood-${lat.toFixed(1)}-${lng.toFixed(1)}`;
     socket.join(neighborhoodId);
     // @ts-ignore
@@ -169,16 +142,14 @@ io.on('connection', (socket) => {
 
   socket.on('update-location', async ({ userId, coordinates }: { userId: string, coordinates: number[] }) => {
     try {
-      // Update location in DB
       await User.findByIdAndUpdate(userId, {
         location: {
           type: 'Point',
-          coordinates: coordinates, // [long, lat]
+          coordinates: coordinates,
           updatedAt: new Date()
         }
       });
 
-      // Emit to trusted peers who are following this user
       socket.to(`room-${userId}`).emit('location-received', {
         userId,
         coordinates,
@@ -208,35 +179,30 @@ io.on('connection', (socket) => {
   });
 });
 
-// Routes
-import authRoutes from './routes/authRoutes';
-import sosRoutes from './routes/sosRoutes';
-import incidentRoutes from './routes/incidentRoutes';
-import userRoutes from './routes/userRoutes';
-import safeZoneRoutes from './routes/safeZoneRoutes';
-import flashRoutes from './routes/flashRoutes';
-import notificationRoutes from './routes/notificationRoutes';
-import chatRoutes from './routes/chatRoutes';
-import paymentRoutes from './routes/paymentRoutes';
-import adminRoutes from './routes/adminRoutes';
+// routes
+import authRoutes from './app/routes/authRoutes';
+import sosRoutes from './app/routes/sosRoutes';
+import incidentRoutes from './app/routes/incidentRoutes';
+import userRoutes from './app/routes/userRoutes';
+import safeZoneRoutes from './app/routes/safeZoneRoutes';
+import flashRoutes from './app/routes/flashRoutes';
+import notificationRoutes from './app/routes/notificationRoutes';
+import chatRoutes from './app/routes/chatRoutes';
+import paymentRoutes from './app/routes/paymentRoutes';
+import adminRoutes from './app/routes/adminRoutes';
 
-app.use('/api/auth', authRoutes);
-app.use('/api/sos', sosRoutes);
-app.use('/api/incidents', incidentRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/safezones', safeZoneRoutes);
-app.use('/api/flash', flashRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/admin', adminRoutes);
+const routes: any = {
+  auth: authRoutes, sos: sosRoutes, incidents: incidentRoutes, users: userRoutes,
+  safezones: safeZoneRoutes, flash: flashRoutes, notifications: notificationRoutes,
+  chat: chatRoutes, payments: paymentRoutes, admin: adminRoutes
+};
 
-// Default Route
-app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Welcome to SHIELD API' });
-});
+Object.keys(routes).forEach(p => app.use(`/api/${p}`, routes[p]));
 
-// Health Check for monitoring
+// home
+app.get('/', (req, res) => res.json({ message: 'Welcome to SHIELD API' }));
+
+// health
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'UP',
@@ -253,22 +219,11 @@ app.get('/api/status', (req: Request, res: Response) => {
   });
 });
 
+// err handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(err.stack);
-
-  // Handle Multer file size errors specifically
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({
-      success: false,
-      message: 'File is too large! Maximum allowed size is 15MB.'
-    });
-  }
-
-  res.status(500).json({
-    success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
-  });
+  const msg = err.code === 'LIMIT_FILE_SIZE' ? 'File too large (max 15MB)' : 'Something went wrong';
+  res.status(err.code === 'LIMIT_FILE_SIZE' ? 400 : 500).json({ success: false, message: msg });
 });
 
 const PORT = process.env.PORT || 5000;
@@ -276,23 +231,11 @@ const serverInstance = server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
-// Graceful Shutdown Handler
-const gracefulShutdown = (signal: string) => {
-  logger.info(`${signal} received. Starting graceful shutdown...`);
-  serverInstance.close(() => {
-    logger.info('HTTP server closed.');
-    mongoose.connection.close(false).then(() => {
-      logger.info('MongoDB connection closed.');
-      process.exit(0);
-    });
-  });
-
-  // Force shutdown after 10s if graceful fails
-  setTimeout(() => {
-    logger.error('Could not close connections in time, forcefully shutting down');
-    process.exit(1);
-  }, 10000);
+// shutdown
+const shutdown = (sig: string) => {
+  logger.info(`${sig} - closing server...`);
+  serverInstance.close(() => mongoose.connection.close(false).then(() => process.exit(0)));
+  setTimeout(() => process.exit(1), 10000);
 };
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

@@ -113,11 +113,11 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for geoqueries
+// geo index
 userSchema.index({ location: '2dsphere' });
 
 
-// Hash password before saving
+// hash pass before save
 userSchema.pre('save', async function(this: any) {
   console.log('--- PRE-SAVE DEBUG ---');
   console.log('Email:', this.email);
@@ -129,7 +129,7 @@ userSchema.pre('save', async function(this: any) {
     return;
   }
   
-  // Prevent double hashing if the value is already a bcrypt hash
+  // check if already hashed
   const isHashed = /^\$2[aby]\$\d+\$.+/.test(this.password);
   console.log('Is already hashed?', isHashed);
   if (isHashed) {
@@ -148,7 +148,7 @@ userSchema.pre('save', async function(this: any) {
   console.log('--- END PRE-SAVE DEBUG ---');
 });
 
-// Compare password method
+// compare pass method
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);

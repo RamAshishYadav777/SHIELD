@@ -43,12 +43,12 @@ class IncidentController {
     }
   }
 
-  // pull reported incidents
+  // get incidents
   async getIncidents(req: Request, res: Response) {
     try {
       let filter: any = {};
 
-      // If ?verified=true is passed, only show verified reports
+      // filter by verification
       if (req.query.verified === "true") {
         filter.isVerified = true;
       }
@@ -67,7 +67,7 @@ class IncidentController {
     }
   }
 
-  // search for one specific report
+  // get incident by id
   async getIncidentById(req: Request, res: Response) {
     try {
       const incident = await Incident.findById(req.params.id).populate(
@@ -90,7 +90,7 @@ class IncidentController {
     }
   }
 
-  // fetch incidents reported by the logged-in user
+  // get user incidents
   async getMyIncidents(req: AuthRequest, res: Response) {
     try {
       const incidents = await Incident.find({ user: req.user.id }).sort({

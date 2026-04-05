@@ -7,28 +7,28 @@ import crypto from 'crypto';
 import logger from '../utils/logger';
 
 class AuthController {
-  // handles new user registration
+  // user registration
   async register(req: Request, res: Response) {
     try {
       const { name, email, password, phone, role } = req.body;
       logger.info(`Registration attempt: ${JSON.stringify({ name, email, phone, role })}`);
 
-      // check if email already taken
+      // check email exists
       const existingByEmail = await User.findOne({ email });
       if (existingByEmail) {
         return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
       }
-      // check if phone already taken
+      // check phone exists
       const existingByPhone = await User.findOne({ phone });
       if (existingByPhone) {
         return res.status(400).json({ success: false, message: 'An account with this phone number already exists.' });
       }
 
-      // Generate 6-digit OTP
+      // generate 6 digit otp
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-      // Create user — role defaults to 'user' unless explicitly set to 'admin'
+      // create user record
       const user = await User.create({
         name,
         email,
@@ -78,7 +78,7 @@ class AuthController {
     }
   }
 
-  // logic for login
+  // login logic
   login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
@@ -107,7 +107,7 @@ class AuthController {
     }
   }
 
-  // Get token from model, create cookie and send response
+  // helper for token response
   private sendTokenResponse(user: any, statusCode: number, res: Response) {
     const accessToken = generateAccessToken(user._id.toString());
     const refreshToken = generateRefreshToken(user._id.toString());
@@ -149,7 +149,7 @@ class AuthController {
       });
   }
 
-  // refresh token - issue new access token from refresh token
+  // refresh tokens
   async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies.refreshToken;
     
@@ -187,7 +187,7 @@ class AuthController {
     }
   }
 
-  // logout - clear everything
+  // clear all cookies on logout
   async logout(req: Request, res: Response) {
     const isProd = process.env.NODE_ENV === 'production';
     const clearOptions: any = {
@@ -208,7 +208,7 @@ class AuthController {
     });
   }
 
-  // verifying email with OTP
+  // verify otp helper
   async verifyOTP(req: Request, res: Response) {
     try {
       const { email, otp } = req.body;
@@ -241,7 +241,7 @@ class AuthController {
     }
   }
 
-  // resend OTP
+  // resend otp to user
   async resendOTP(req: Request, res: Response) {
     try {
       const { email } = req.body;
@@ -278,7 +278,7 @@ class AuthController {
     }
   }
 
-  // forgot password - send reset link
+  // forgot password link sender
   async forgotPassword(req: Request, res: Response) {
     try {
       const { email } = req.body;
@@ -346,7 +346,7 @@ class AuthController {
     }
   }
 
-  // reset password
+  // reset password handler
   async resetPassword(req: Request, res: Response) {
     try {
       const token = req.query.token;
@@ -379,7 +379,7 @@ class AuthController {
     }
   }
 
-  // get logged-in user's profile
+  // get current user profile
   async getMe(req: any, res: Response) {
     try {
       const user = await User.findById(req.user.id);

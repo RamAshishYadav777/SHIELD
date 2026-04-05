@@ -7,7 +7,7 @@ import SOS from '../models/SOS';
 import logger from '../utils/logger';
 
 class UserController {
-  // adding a person to emergency contact list
+  // add emergency contact
   async addContact(req: AuthRequest, res: Response) {
     try {
       const { name, phone, email, relation } = req.body;
@@ -17,12 +17,12 @@ class UserController {
         return res.status(404).json({ success: false, message: 'Who are you? User not found' });
       }
 
-      // Hard Limit: Max 3 contacts total (System Policy)
+      // max 3 contacts
       if (user.emergencyContacts.length >= 3) {
         return res.status(400).json({ success: false, message: 'Maximum limit of 3 emergency contacts reached.' });
       }
 
-      // Logic: 1st contact is free. Adding a 2nd or 3rd requires a paid registration.
+      // check payment status for extra slots
       if (user.emergencyContacts.length >= 1) {
         if (user.contactSlots < 1) {
            return res.status(403).json({ 
@@ -30,7 +30,7 @@ class UserController {
              message: 'Additional contact registration requires a one-time payment.' 
            });
         }
-        // Consume the specific addition credit
+        // consume credit
         user.contactSlots -= 1;
       }
 
@@ -43,7 +43,7 @@ class UserController {
     }
   }
 
-  // kicking a contact off the list
+  // remove contact
   async deleteContact(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
@@ -62,7 +62,7 @@ class UserController {
     }
   }
 
-  // showing all your emergency people
+  // list contacts
   async getContacts(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
@@ -75,7 +75,7 @@ class UserController {
     }
   }
 
-  // keeping user location up to date in db
+  // update live location
   async updateLocation(req: AuthRequest, res: Response) {
     try {
       const { coordinates } = req.body;
@@ -96,7 +96,7 @@ class UserController {
     }
   }
 
-  // letting folks know i made it to safe spot
+  // notify arrival at safe zone
   async notifyArrival(req: AuthRequest, res: Response) {
     try {
       const { zoneName } = req.body;
@@ -106,7 +106,7 @@ class UserController {
         return res.status(404).json({ success: false, message: 'User not found' });
       }
 
-      // just a log for now, could be an sms later
+      // log arrival
       logger.info(`User ${user.name} is safe at ${zoneName}`);
       
       res.status(200).json({ 
@@ -118,7 +118,7 @@ class UserController {
     }
   }
 
-  // update profile info (name, phone, password)
+  // update profile info
   async updateProfile(req: AuthRequest, res: Response) {
     try {
       const { name, phone, currentPassword, newPassword } = req.body;
@@ -128,6 +128,7 @@ class UserController {
       if (name) user.name = name;
       if (phone) user.phone = phone;
 
+      // verify old password and update
       if (currentPassword && newPassword) {
         const isMatch = await user.comparePassword(currentPassword);
         if (!isMatch) return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
@@ -145,7 +146,7 @@ class UserController {
     }
   }
 
-  // goodbye forever - delete my account
+  // delete account
   async deleteAccount(req: AuthRequest, res: Response) {
     try {
       const user = await User.findByIdAndDelete(req.user.id);
@@ -162,9 +163,7 @@ class UserController {
     }
   }
 
-  // --- Public Methods ---
-
-  // get general stats for the landing page
+  // get public stats
   async getPublicStats(req: any, res: Response) {
     try {
       const [userCount, incidentCount, zoneCount] = await Promise.all([

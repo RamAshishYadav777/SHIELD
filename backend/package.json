@@ -1,12 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "dist/server.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "cross-env NODE_ENV=production node dist/server.js",
-    "dev": "tsx watch src/server.ts"
-  },
+    "main": "dist/app.js",
+    "scripts": {
+      "build": "tsc",
+      "start": "cross-env NODE_ENV=production node dist/app.js",
+      "dev": "tsx watch ./app.ts"
+    },
   "keywords": [],
   "author": "",
   "license": "ISC",

@@ -2,19 +2,19 @@ import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import path from 'path';
 
-// Configure Cloudinary
+// cloudinary config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Using memory storage for buffer-based upload
+// memory storage
 const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage: storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB max
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15mb limit
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
@@ -27,7 +27,7 @@ export const upload = multer({
   }
 });
 
-// helper to upload buffer to cloudinary
+// cloudinary helper
 export const uploadToCloudinary = (fileBuffer: Buffer, folder: string = 'shield/incidents'): Promise<string> => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(

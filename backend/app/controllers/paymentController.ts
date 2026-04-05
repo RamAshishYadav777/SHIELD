@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
-import Payment from '../models/Payment';
+import Payment, { IPayment } from '../models/Payment';
 import User from '../models/User';
 import logger from '../utils/logger';
 import dotenv from 'dotenv';
@@ -19,13 +19,13 @@ class PaymentController {
 
     if (!key_id || !key_secret) {
       logger.warn('Razorpay keys are missing. Payment features will not work.');
-      // Initialize with dummy values to prevent library crash on class instantiation
+      // fallback to prevent crash if keys missing
       this.razorpay = new Razorpay({
         key_id: 'dummy_key',
         key_secret: 'dummy_secret',
       });
     } else {
-      logger.info(Razorpay initialized with Key ID: ${key_id.substring(0, 8)}...);
+      logger.info(`Razorpay initialized with Key ID: ${key_id.substring(0, 8)}...`);
       this.razorpay = new Razorpay({
         key_id,
         key_secret,
@@ -33,7 +33,7 @@ class PaymentController {
     }
   }
 
-  // user wants to buy another contact slot
+  // buy contact slot
   async createOrder(req: AuthRequest, res: Response) {
     try {
       if (process.env.RAZORPAY_KEY_ID === 'placeholder_key' || !process.env.RAZORPAY_KEY_ID) {
@@ -43,16 +43,16 @@ class PaymentController {
         });
       }
 
-      const amount = 1000 * 100; // 1000 INR in paise
+      const amount = 1000 * 100; // 1000 in paise
       const options = {
         amount,
         currency: 'INR',
-        receipt: slot_${req.user.id.toString().slice(-6)}_${Date.now()},
+        receipt: `slot_${req.user.id.toString().slice(-6)}_${Date.now()}`,
       };
 
       const order = await this.razorpay.orders.create(options);
 
-      // save pending payment in our db
+      // save to db
       await Payment.create({
         user: req.user.id,
         orderId: order.id,
@@ -70,13 +70,13 @@ class PaymentController {
       });
     } catch (error: any) {
       const errorMsg = error.error?.description || error.message || 'Unknown Razorpay Error';
-      logger.error(Failed to create Razorpay order: ${errorMsg});
+      logger.error(`Failed to create Razorpay order: ${errorMsg}`);
       console.error('Full Razorpay Error:', error);
       res.status(500).json({ success: false, message: errorMsg });
     }
   }
 
-  // verify the payment signature from razorpay
+  // verify signature from razorpay
   async verifyPayment(req: AuthRequest, res: Response) {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
@@ -90,7 +90,7 @@ class PaymentController {
       const isAuthentic = expectedSignature === razorpay_signature;
 
       if (isAuthentic) {
-        // update payment record
+        // update record
         const payment = await Payment.findOneAndUpdate(
           { orderId: razorpay_order_id },
           { 
@@ -102,12 +102,12 @@ class PaymentController {
         );
 
         if (payment) {
-          // bump the user slot count
+          // inc slot count
           await User.findByIdAndUpdate(req.user.id, {
             $inc: { contactSlots: 1 }
           });
           
-          logger.info(User ${req.user.id} bought a new contact slot);
+          logger.info(`User ${req.user.id} bought a new contact slot`);
           res.status(200).json({ success: true, message: 'Payment verified, slot added!' });
         } else {
            res.status(404).json({ success: false, message: 'Payment record missing' });
@@ -121,7 +121,7 @@ class PaymentController {
     }
   }
 
-  // admin fetch of all payments
+  // admin: get all payments
   async getAllPayments(req: AuthRequest, res: Response) {
     try {
       const payments = await Payment.find({})
@@ -131,7 +131,7 @@ class PaymentController {
       res.status(200).json({ 
         success: true, 
         count: payments.length,
-        totalAmount: payments.filter(p => p.status === 'success').reduce((acc, p) => acc + p.amount, 0),
+        totalAmount: payments.filter(p => p.status === 'success').reduce((acc: number, p: IPayment) => acc + p.amount, 0),
         data: payments 
       });
     } catch (error: any) {

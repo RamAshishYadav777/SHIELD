@@ -122,9 +122,10 @@ export default function ContactsPage() {
             
             toast.success('Slot unlocked! You can now add more contacts.');
             await refreshUser();
+            setFormData({ name: '', phone: '', email: '', relation: '' });
             setFormUnlocked(true);
             setShowPaymentInfo(false);
-            setShowAdd(true);
+            setTimeout(() => setShowAdd(true), 100);
           } catch (err) {
             toast.error('Payment verification failed');
           }
@@ -353,16 +354,15 @@ export default function ContactsPage() {
                     animate={{ scale: 1, y: 0 }} 
                     exit={{ scale: 0.95, y: 20 }}
                     transition={{ type: "spring", duration: 0.6 }}
-                    className="relative w-full max-w-md"
+                    className="relative w-full max-w-xl"
                 >
-                    <button 
-                        onClick={() => setShowPaymentInfo(false)}
-                        className="absolute -top-4 -right-4 w-10 h-10 bg-white/10 border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 hover:rotate-90 transition-all z-20"
-                    >
-                        <Plus className="rotate-45" size={20} />
-                    </button>
-                    
-                    <Card className="bg-neutral-950 border-accent-orange/30 p-8 text-center relative overflow-hidden shadow-[0_0_100px_rgba(244,130,31,0.15)] rounded-[2.5rem]">
+                    <Card className="bg-neutral-950 border-accent-orange/30 p-12 text-center relative overflow-hidden shadow-[0_0_100px_rgba(244,130,31,0.15)] rounded-[3rem]">
+                        <button 
+                            onClick={() => setShowPaymentInfo(false)}
+                            className="absolute top-8 right-8 w-10 h-10 bg-white/5 border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 hover:rotate-90 transition-all z-20"
+                        >
+                            <Plus className="rotate-45" size={20} />
+                        </button>
                         <div className="absolute inset-0 bg-gradient-to-br from-accent-orange/[0.03] to-magenta/[0.03]" />
                         <div className="relative z-10">
                             <div className="w-16 h-16 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">

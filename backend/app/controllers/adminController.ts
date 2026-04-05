@@ -6,7 +6,7 @@ import SafeZone from '../models/SafeZone';
 import logger from '../utils/logger';
 
 class AdminController {
-  // list all registered users
+  // list users
   async getAllUsers(req: AuthRequest, res: Response) {
     try {
       const users = await User.find().select('-password').sort({ createdAt: -1 });
@@ -21,13 +21,13 @@ class AdminController {
     }
   }
 
-  // block/unblock a member
+  // toggle block
   async toggleBlockUser(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.params.id);
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });
       
-      // Update status
+      // update status
       user.isBlocked = !user.isBlocked;
       await user.save();
       
@@ -44,7 +44,7 @@ class AdminController {
     }
   }
 
-  // admin-level deletion
+  // delete user
   async adminDeleteUser(req: AuthRequest, res: Response) {
     try {
       const user = await User.findByIdAndDelete(req.params.id);
@@ -61,9 +61,9 @@ class AdminController {
     }
   }
 
-  // --- Incident Management ---
+  // incidents
 
-  // verify/unverify an incident
+  // verify incident
   async toggleIncidentVerification(req: AuthRequest, res: Response) {
     try {
       const incident = await Incident.findById(req.params.id);
@@ -81,7 +81,7 @@ class AdminController {
     }
   }
 
-  // admin-specific incident removal
+  // delete incident
   async adminDeleteIncident(req: AuthRequest, res: Response) {
     try {
       const incident = await Incident.findByIdAndDelete(req.params.id);
@@ -95,9 +95,9 @@ class AdminController {
     }
   }
 
-  // --- Safe Zone Management ---
+  // safe zones
 
-  // manually register a new safe hub
+  // create zone
   async adminCreateSafeZone(req: AuthRequest, res: Response) {
     try {
       const zone = await SafeZone.create(req.body);
@@ -108,7 +108,7 @@ class AdminController {
     }
   }
 
-  // hard-delete an incorrect safety hub
+  // delete zone
   async adminDeleteSafeZone(req: AuthRequest, res: Response) {
     try {
       const zone = await SafeZone.findByIdAndDelete(req.params.id);
@@ -121,7 +121,7 @@ class AdminController {
     }
   }
 
-  // Admin: Remove a specific contact for any user
+  // remove specific contact for user
   async adminDeleteUserContact(req: AuthRequest, res: Response) {
     try {
       const { userId, contactId } = req.params;

@@ -8,13 +8,13 @@ import logger from "../utils/logger";
 import axios from "axios";
 
 class SOSController {
-  // fires off an sos signal
+  // trigger sos signal
   async triggerSOS(req: AuthRequest, res: Response) {
     try {
       const { coordinates, message } = req.body;
       let address = req.body.address;
 
-      // Server-side fallback reverse geocoding for maximum reliability
+      // reverse geocode if no address
       if (!address || address === "Current Location" || address === "") {
         try {
           const [lng, lat] = coordinates;
@@ -32,7 +32,7 @@ class SOSController {
         }
       }
 
-      // Guarantee address exists for the UI
+      // ensure address exists
       address = address || "GPS Pinned Location";
 
       const user = await (User.findById(req.user.id) as any).populate(
@@ -57,15 +57,15 @@ class SOSController {
         message,
       });
 
-      // Notify user immediately that we received the signal
+      // return early to user
       res.status(201).json({
         success: true,
         data: sos,
         message: "SOS triggered. We are notifying your contacts and admins",
       });
 
-      // ─── BACKGROUND NOTIFICATIONS ───────────────────────────────────────────
-      // We run this AFTER sending the response to ensure "Zero Delay" for the user
+      // --- background alerts ---
+      // handle notifications async to avoid delay for user
       (async () => {
         try {
           const io = req.app.get("io");
@@ -74,7 +74,7 @@ class SOSController {
             `Background SOS alerts: Processing for ${admins.length} admins and ${user.emergencyContacts.length} contacts.`,
           );
 
-          // Global Socket Alert
+          // socket alerts
           if (io) {
             io.emit("system-alert", {
               type: "SOS",
@@ -83,7 +83,7 @@ class SOSController {
               time: new Date(),
             });
 
-            // Specific channel for the Live SOS Activity feed
+            // live feed update
             io.emit("new-sos", {
               ...sos.toObject(),
               user: {
@@ -96,7 +96,7 @@ class SOSController {
           // Track emails already notified to avoid duplicates
           const notifiedEmails = new Set<string>();
 
-          // 1. Alerting Admins
+          // notify admins
           for (const admin of admins) {
             notificationController
               .sendNotification(admin._id.toString(), {
@@ -128,7 +128,7 @@ class SOSController {
             }
           }
 
-          // 2. Alerting Emergency Contacts (skip anyone already notified as admin)
+          // notify emergency contacts
           for (const contact of user.emergencyContacts as any[]) {
             if (contact.email) {
               const contactEmail = contact.email.toLowerCase();
@@ -140,7 +140,7 @@ class SOSController {
               }
               notifiedEmails.add(contactEmail);
               logger.info(
-                `SOS System: Attempting to email emergency contact ${contact.name} at ${contact.email}`,
+                "send email to contact",
               );
               sendEmail({
                 email: contact.email,
@@ -194,7 +194,7 @@ class SOSController {
     }
   }
 
-  // list of active alerts for admins to see
+  // get active alerts
   async getActiveSOS(req: AuthRequest, res: Response) {
     try {
       const alerts = await SOS.find({ status: "active" }).populate(
@@ -212,7 +212,7 @@ class SOSController {
     }
   }
 
-  // user wants to see their past sos calls
+  // get user history
   async getSOSHistory(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.find({ user: req.user.id })
@@ -240,7 +240,7 @@ class SOSController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
-  // mark an alert as resolved
+  // resolve alert
   async resolveSOS(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
@@ -251,7 +251,7 @@ class SOSController {
           .json({ success: false, message: "SOS alert missing" });
       }
 
-      // check if it is the owner or admin doing this
+      // auth check
       if (sos.user.toString() !== req.user.id && req.user.role !== "admin") {
         return res
           .status(401)
