@@ -17,22 +17,31 @@ class PredictionController {
           });
       }
 
-      const nearbyIncidents = await Incident.find({
-        location: {
-          $near: {
-            $geometry: {
+      const parsedLng = parseFloat(lng as string);
+      const parsedLat = parseFloat(lat as string);
+      const parsedDist = parseInt(distance as string) || 5000;
+
+      if (isNaN(parsedLng) || isNaN(parsedLat)) {
+        return res.status(400).json({ success: false, message: "Invalid coordinates provided" });
+      }
+
+      const nearbyIncidents = await Incident.aggregate([
+        {
+          $geoNear: {
+            near: {
               type: "Point",
-              coordinates: [
-                parseFloat(lng as string),
-                parseFloat(lat as string),
-              ],
+              coordinates: [parsedLng, parsedLat],
             },
-            $maxDistance: parseInt(distance as string),
+            distanceField: "distance",
+            maxDistance: parsedDist,
+            spherical: true,
+            query: {
+              isVerified: true,
+              createdAt: { $gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+            },
           },
         },
-        isVerified: true, // Only count verified incidents
-        createdAt: { $gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // past month only
-      });
+      ]);
 
       // some math to figure out how safe it is
       let riskScore = 0;

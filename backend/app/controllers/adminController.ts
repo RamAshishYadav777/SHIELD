@@ -9,7 +9,14 @@ class AdminController {
   // list users
   async getAllUsers(req: AuthRequest, res: Response) {
     try {
-      const users = await User.find().select('-password').sort({ createdAt: -1 });
+      const users = await User.aggregate([
+        { $sort: { createdAt: -1 } },
+        {
+          $project: {
+            password: 0,
+          },
+        },
+      ]);
       logger.info(`Admin ${req.user.name} fetched all user records.`);
       res.status(200).json({ 
         success: true, 

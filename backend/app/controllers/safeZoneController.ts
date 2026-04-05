@@ -5,7 +5,7 @@ class SafeZoneController {
   // fetching all registered safe zones - global list
   async getAllSafeZones(req: Request, res: Response) {
     try {
-      const zones = await SafeZone.find({}).sort("-createdAt");
+      const zones = await SafeZone.aggregate([{ $sort: { createdAt: -1 } }]);
       res.status(200).json({ success: true, count: zones.length, data: zones });
     } catch (error: any) {
       res
@@ -32,20 +32,27 @@ class SafeZoneController {
           });
       }
 
-      const zones = await SafeZone.find({
-        location: {
-          $near: {
-            $geometry: {
+      const parsedLng = parseFloat(lng as string);
+      const parsedLat = parseFloat(lat as string);
+      const parsedDist = parseInt(distance as string) || 5000;
+
+      if (isNaN(parsedLng) || isNaN(parsedLat)) {
+        return res.status(400).json({ success: false, message: "Invalid coordinates provided" });
+      }
+
+      const zones = await SafeZone.aggregate([
+        {
+          $geoNear: {
+            near: {
               type: "Point",
-              coordinates: [
-                parseFloat(lng as string),
-                parseFloat(lat as string),
-              ],
+              coordinates: [parsedLng, parsedLat],
             },
-            $maxDistance: parseInt(distance as string),
+            distanceField: "distance",
+            maxDistance: parsedDist,
+            spherical: true,
           },
         },
-      });
+      ]);
 
       res.status(200).json({ success: true, count: zones.length, data: zones });
     } catch (error: any) {

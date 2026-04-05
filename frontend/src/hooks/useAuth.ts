@@ -91,8 +91,7 @@ export const useAuth = () => {
       queryClient.clear();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('shield_user');
-        localStorage.clear();
-        sessionStorage.clear();
+        // Removed global clear() to preserve non-auth settings like dismissed alerts
       }
       
       const { setLoggingOutFlag } = await import('@/lib/api');

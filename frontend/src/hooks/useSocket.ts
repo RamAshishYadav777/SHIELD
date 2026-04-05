@@ -100,24 +100,11 @@ export const useSocket = () => {
     const activeSocket = globalSocket;
     if (activeSocket && user) {
       const onAlert = (data: any) => {
-        playSiren();
-        toast(`🚨 EMERGENCY: ${data.userName} NEEDS HELP!`, {
-          id: 'sos-alert',
-          duration: 12000,
-          position: 'top-center',
-          style: {
-            background: 'linear-gradient(90deg, #b91c1c, #991b1b)',
-            color: '#fff',
-            fontWeight: '900',
-            borderRadius: '1.5rem',
-            padding: '12px 24px',
-            border: '1px solid rgba(255,255,255,0.2)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-            fontSize: '11px',
-            letterSpacing: '0.1em'
-          },
-          icon: '📢'
-        });
+        // PLAY SIREN ONLY FOR SOS TYPE, BUT NO TOAST (Removed as requested)
+        if (data && data.type === 'SOS') {
+          playSiren();
+          // Visual toast removed because user is already getting notifications from FlashAlerts
+        }
       };
 
       activeSocket.off('system-alert');

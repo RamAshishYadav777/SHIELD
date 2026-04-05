@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { AuthRequest } from "../middleware/auth";
 import Incident from "../models/Incident";
 import { uploadToCloudinary } from "../utils/imageUpload";
@@ -46,16 +47,36 @@ class IncidentController {
   // get incidents
   async getIncidents(req: Request, res: Response) {
     try {
-      let filter: any = {};
-
-      // filter by verification
+      const pipeline: any[] = [];
       if (req.query.verified === "true") {
-        filter.isVerified = true;
+        pipeline.push({ $match: { isVerified: true } });
       }
+      pipeline.push(
+        { $sort: { createdAt: -1 } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $project: {
+            "user.name": 1,
+            title: 1,
+            description: 1,
+            category: 1,
+            location: 1,
+            images: 1,
+            isVerified: 1,
+            createdAt: 1,
+          },
+        },
+      );
 
-      const incidents = await Incident.find(filter)
-        .sort({ createdAt: -1 })
-        .populate("user", "name");
+      const incidents = await Incident.aggregate(pipeline);
       res.status(200).json({ success: true, data: incidents });
     } catch (error: any) {
       res
@@ -70,16 +91,36 @@ class IncidentController {
   // get incident by id
   async getIncidentById(req: Request, res: Response) {
     try {
-      const incident = await Incident.findById(req.params.id).populate(
-        "user",
-        "name",
-      );
-      if (!incident) {
+      const incident = await Incident.aggregate([
+        { $match: { _id: new mongoose.Types.ObjectId(req.params.id as string) } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $project: {
+            "user.name": 1,
+            title: 1,
+            description: 1,
+            category: 1,
+            location: 1,
+            images: 1,
+            isVerified: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
+      if (!incident || incident.length === 0) {
         return res
           .status(404)
           .json({ success: false, message: "No such incident found" });
       }
-      res.status(200).json({ success: true, data: incident });
+      res.status(200).json({ success: true, data: incident[0] });
     } catch (error: any) {
       res
         .status(500)
@@ -93,9 +134,10 @@ class IncidentController {
   // get user incidents
   async getMyIncidents(req: AuthRequest, res: Response) {
     try {
-      const incidents = await Incident.find({ user: req.user.id }).sort({
-        createdAt: -1,
-      });
+      const incidents = await Incident.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(req.user.id as string) } },
+        { $sort: { createdAt: -1 } },
+      ]);
       res
         .status(200)
         .json({ success: true, count: incidents.length, data: incidents });

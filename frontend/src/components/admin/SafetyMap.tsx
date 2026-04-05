@@ -27,6 +27,18 @@ const BLUE_ICON = L.icon({
 // ─── HELPER COMPONENTS ───────────────────────────────────────────────────────
 
 const LocationMarker = ({ position, onClick }: { position: [number, number] | null, onClick: (coords: [number, number]) => void }) => {
+  const targetIcon = L.divIcon({
+    className: 'target-pin',
+    html: `
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+        <div style="position: absolute; width: 40px; height: 40px; background: rgba(244,130,31,0.2); border: 2px solid #F4821F; border-radius: 50%; animation: targetPing 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+        <div style="width: 12px; height: 12px; background: #F4821F; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px #F4821F; z-index: 10;"></div>
+      </div>
+    `,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
   useMapEvents({
     click(e: any) {
       onClick([e.latlng.lat, e.latlng.lng]);
@@ -35,9 +47,19 @@ const LocationMarker = ({ position, onClick }: { position: [number, number] | nu
 
   if (!position) return null;
   return (
-    <Marker position={position}>
-      <Popup>New Safe Zone Location</Popup>
-    </Marker>
+    <>
+      <style>{`
+        @keyframes targetPing {
+          0% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(3); opacity: 0; }
+        }
+      `}</style>
+      <Marker position={position} icon={targetIcon}>
+        <Popup className="custom-popup">
+          <div className="text-[10px] font-black uppercase tracking-widest text-accent-orange">Target Point Selected</div>
+        </Popup>
+      </Marker>
+    </>
   );
 };
 

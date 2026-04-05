@@ -78,11 +78,13 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 const limiter = (max: number) => rateLimit({
   windowMs: 15 * 60 * 1000,
   max,
-  message: { success: false, message: 'Too many requests' }
+  message: { success: false, message: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-app.use('/api/', limiter(100));
-app.use(['/api/auth/', '/api/sos/'], limiter(100));
+app.use('/api/', limiter(5000));
+app.use(['/api/auth/', '/api/sos/'], limiter(2000));
 
 // session
 app.use(session({
@@ -163,8 +165,8 @@ io.on('connection', (socket) => {
   socket.on('sos-triggered', async (data: any) => {
     socket.broadcast.emit('system-alert', {
       type: 'SOS',
-      user: data.userName,
-      location: data.coordinates
+      userName: data.userName,
+      coordinates: data.coordinates
     });
   });
 

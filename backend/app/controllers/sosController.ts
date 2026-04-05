@@ -1,4 +1,5 @@
 import { Response } from "express";
+import mongoose from "mongoose";
 import { AuthRequest } from "../middleware/auth";
 import SOS from "../models/SOS";
 import User from "../models/User";
@@ -197,10 +198,29 @@ class SOSController {
   // get active alerts
   async getActiveSOS(req: AuthRequest, res: Response) {
     try {
-      const alerts = await SOS.find({ status: "active" }).populate(
-        "user",
-        "name email",
-      );
+      const alerts = await SOS.aggregate([
+        { $match: { status: "active" } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $project: {
+            "user.name": 1,
+            "user.email": 1,
+            location: 1,
+            address: 1,
+            message: 1,
+            status: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
       res.status(200).json({ success: true, data: alerts });
     } catch (error: any) {
       res
@@ -215,9 +235,31 @@ class SOSController {
   // get user history
   async getSOSHistory(req: AuthRequest, res: Response) {
     try {
-      const history = await SOS.find({ user: req.user.id })
-        .populate("user", "name email")
-        .sort("-createdAt");
+      const history = await SOS.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        { $sort: { createdAt: -1 } },
+        {
+          $project: {
+            "user.name": 1,
+            "user.email": 1,
+            location: 1,
+            address: 1,
+            message: 1,
+            status: 1,
+            resolvedAt: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
       res.status(200).json({ success: true, data: history });
     } catch (error: any) {
       res
@@ -231,9 +273,33 @@ class SOSController {
 
   async getAllSOSAdmin(req: AuthRequest, res: Response) {
     try {
-      const history = await SOS.find()
-        .populate("user", "name email role phone emergencyContacts")
-        .sort({ createdAt: -1 });
+      const history = await SOS.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        { $sort: { createdAt: -1 } },
+        {
+          $project: {
+            "user.name": 1,
+            "user.email": 1,
+            "user.role": 1,
+            "user.phone": 1,
+            "user.emergencyContacts": 1,
+            location: 1,
+            address: 1,
+            message: 1,
+            status: 1,
+            resolvedAt: 1,
+            createdAt: 1,
+          },
+        },
+      ]);
       res.json({ success: true, count: history.length, data: history });
     } catch (error: any) {
       logger.error(`Error fetching admin SOS history: ${error.message}`);

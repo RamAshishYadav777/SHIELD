@@ -4,36 +4,81 @@ import React, { useEffect, useState } from 'react';
 import { AlertCircle, X, Info, AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from '@/hooks/useLocation';
+import { calculateDistance } from '@/lib/utils';
 
 interface FlashMessage {
   _id: string;
   title: string;
   message: string;
   type: 'info' | 'warning' | 'emergency';
+  areaName?: string;
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
+  createdBy?: string;
 }
 
 export default function FlashAlerts() {
   const [messages, setMessages] = useState<FlashMessage[]>([]);
   const { socket } = useSocket();
+  const { user } = useAuth();
+  const userLocation = useLocation();
 
   useEffect(() => {
     fetchActiveMessages();
 
     if (socket) {
       socket.on('new-flash-message', (message: FlashMessage) => {
-        setMessages(prev => [message, ...prev]);
+        // DON'T SHOW FOR THE SENDER (Admin who just sent it)
+        if (user && message.createdBy === user.id) return;
+
+        // PERSISTENCE CHECK: Skip if already dismissed
+        const dismissed = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
+        if (dismissed.includes(message._id)) return;
+
+        // LOCATION FILTERING: If message has location, only show if nearby (~50km)
+        if (message.location && userLocation) {
+          const dist = calculateDistance(
+            userLocation[1], userLocation[0],
+            message.location.coordinates[1], message.location.coordinates[0]
+          );
+          if (dist > 50) return; // Skip if too far
+        }
+
+        // PLAY SIGNAL: Subtle System Alert
+        try {
+          const audio = new Audio('https://www.myinstants.com/media/sounds/eas-bleep.mp3');
+          audio.volume = 0.5;
+          audio.play().catch(() => { /* skip if browser blocks auto-play */ });
+        } catch (e) {
+          console.warn('Audio feedback failed');
+        }
+
+        setMessages((prev) => {
+          if (prev.find(m => m._id === message._id)) return prev;
+          return [message, ...prev];
+        });
       });
     }
 
     return () => {
       if (socket) socket.off('new-flash-message');
     };
-  }, [socket]);
+  }, [socket, user, userLocation]);
 
   const fetchActiveMessages = async () => {
     try {
       const res = await api.get('/flash/active');
-      setMessages(res.data.data);
+      const active = res.data.data;
+      
+      // Filter out persistent dismissed alerts
+      const dismissed = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
+      const filtered = active.filter((m: any) => !dismissed.includes(m._id));
+      
+      setMessages(filtered);
     } catch (error) {
       console.error('Error fetching flash messages:', error);
     }
@@ -41,6 +86,12 @@ export default function FlashAlerts() {
 
   const removeMessage = (id: string) => {
     setMessages(prev => prev.filter(m => m._id !== id));
+    
+    // SAVE TO PERSISTENT STORAGE
+    const current = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
+    if (!current.includes(id)) {
+      localStorage.setItem('dismissedAlerts', JSON.stringify([...current, id]));
+    }
   };
 
   if (messages.length === 0) return null;
@@ -69,7 +120,14 @@ export default function FlashAlerts() {
               {m.type === 'info' && <Info size={24} />}
             </div>
             <div>
-              <h4 className="font-bold text-sm tracking-wide uppercase">{m.title}</h4>
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-bold text-sm tracking-wide uppercase">{m.title}</h4>
+                {m.areaName && (
+                  <span className="text-[10px] bg-white/10 text-white/40 px-2 py-0.5 rounded border border-white/5 font-black uppercase italic tracking-widest">
+                    @{m.areaName}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-text-secondary mt-1">{m.message}</p>
             </div>
           </div>

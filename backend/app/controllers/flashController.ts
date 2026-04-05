@@ -6,22 +6,41 @@ class FlashController {
   // admin can make a flash message for everyone
   async createFlashMessage(req: AuthRequest, res: Response) {
     try {
-      const { title, message, type, durationInHours } = req.body;
+      const { title, message, type, durationInHours, areaName, coordinates } = req.body;
       
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + (durationInHours || 24));
 
-      const flash = await FlashMessage.create({
+      const flashData: any = {
         title,
         message,
         type,
         expiresAt,
+        areaName,
         createdBy: req.user.id
-      });
+      };
+
+      if (Array.isArray(coordinates) && coordinates.length === 2) {
+        const [lng, lat] = coordinates.map(c => parseFloat(c));
+        if (!isNaN(lng) && !isNaN(lat)) {
+          flashData.location = {
+            type: 'Point',
+            coordinates: [lng, lat]
+          };
+        }
+      }
+
+      const flash = await FlashMessage.create(flashData);
 
       const io = req.app.get('io');
       if (io) {
+        // BROADCAST TO EVERYONE: "show everyone" as per instruction
         io.emit('new-flash-message', flash);
+        io.emit('system-alert', {
+           type: 'FLASH_ALERT',
+           title: flash.title,
+           locationName: flash.areaName || 'Global Area'
+        });
       }
 
       res.status(201).json({ success: true, data: flash });

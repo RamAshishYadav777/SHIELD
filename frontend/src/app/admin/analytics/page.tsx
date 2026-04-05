@@ -70,11 +70,16 @@ export default function AdminAnalyticsPage() {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
       if (data && data.length > 0) {
-        const { lat, lon } = data[0];
+        const { lat, lon, display_name } = data[0];
         const coords: [number, number] = [parseFloat(lat), parseFloat(lon)];
         setSearchPos(coords);
         setMapCenter(coords);
         setMapZoom(16);
+        
+        // AUTO-SELECT SEARCHED LOCATION
+        setSelectedPos(coords);
+        setNewZone(prev => ({ ...prev, address: display_name }));
+        toast.success('Location found and focused.');
       } else {
         toast.error('Location not found.');
       }
@@ -92,12 +97,12 @@ export default function AdminAnalyticsPage() {
 
   const handleAddZone = async () => {
     if (!selectedPos || !newZone.name) {
-      toast.error('Please name the zone and pick a map point.');
+      toast.error('Please provide a name and pick a location.');
       return;
     }
 
     try {
-      await api.post('/safezones', {
+      await api.post('/admin/safezones', {
         name: newZone.name,
         type: newZone.type,
         address: newZone.address,
@@ -106,13 +111,13 @@ export default function AdminAnalyticsPage() {
           coordinates: [selectedPos[1], selectedPos[0]] // [lng, lat]
         }
       });
-      toast.success('Safe Zone Registered!');
+      toast.success('Safe Hub Registered!');
       setIsAdding(false);
       setSelectedPos(null);
       setNewZone({ name: '', type: 'Police Station', address: '' });
       fetchAll();
     } catch (error) {
-      toast.error('Failed to create zone.');
+      toast.error('Failed to create hub.');
     }
   };
 
@@ -241,11 +246,32 @@ export default function AdminAnalyticsPage() {
                       onChange={e => setNewZone({ ...newZone, address: e.target.value })}
                     />
                   </div>
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                     <p className="text-[10px] font-bold text-primary uppercase">Selected Coords:</p>
-                     <p className="text-xs font-mono text-neutral-400 mt-1">
-                        {selectedPos ? `${selectedPos[0].toFixed(4)}, ${selectedPos[1].toFixed(4)}` : 'Wait for map click...'}
-                     </p>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase text-neutral-500 tracking-widest pl-2">Precise Coordinates (Map Click or Manual)</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-neutral-600 uppercase ml-2">Latitude</span>
+                        <input 
+                          type="number" 
+                          step="0.000001"
+                          placeholder="Lat (e.g. 28.6139)"
+                          className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs focus:border-primary outline-none font-mono"
+                          value={selectedPos ? selectedPos[0] : ''}
+                          onChange={e => setSelectedPos([parseFloat(e.target.value), selectedPos ? selectedPos[1] : 0])}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-[9px] font-bold text-neutral-600 uppercase ml-2">Longitude</span>
+                        <input 
+                          type="number" 
+                          step="0.000001"
+                          placeholder="Lng (e.g. 77.2090)"
+                          className="w-full bg-black/40 border border-white/10 p-3 rounded-xl text-xs focus:border-primary outline-none font-mono"
+                          value={selectedPos ? selectedPos[1] : ''}
+                          onChange={e => setSelectedPos([selectedPos ? selectedPos[0] : 0, parseFloat(e.target.value)])}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <button 
                     onClick={handleAddZone}

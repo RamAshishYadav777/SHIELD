@@ -124,17 +124,58 @@ class PaymentController {
   // admin: get all payments
   async getAllPayments(req: AuthRequest, res: Response) {
     try {
-      const payments = await Payment.find({})
-        .populate('user', 'name email')
-        .sort('-createdAt');
+      const stats = await Payment.aggregate([
+        {
+          $facet: {
+            // list all payments with user info
+            allPayments: [
+              { $sort: { createdAt: -1 } },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'user',
+                  foreignField: '_id',
+                  as: 'user'
+                }
+              },
+              { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+              {
+                $project: {
+                  orderId: 1,
+                  paymentId: 1,
+                  signature: 1,
+                  amount: 1,
+                  currency: 1,
+                  status: 1,
+                  purpose: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                  'user.name': 1,
+                  'user.email': 1,
+                  'user._id': 1
+                }
+              }
+            ],
+            // calculate total revenue using aggregation
+            revenue: [
+              { $match: { status: 'success' } },
+              { $group: { _id: null, total: { $sum: '$amount' } } }
+            ]
+          }
+        }
+      ]);
+
+      const payments = stats[0].allPayments;
+      const totalAmount = stats[0].revenue[0]?.total || 0;
         
       res.status(200).json({ 
         success: true, 
         count: payments.length,
-        totalAmount: payments.filter(p => p.status === 'success').reduce((acc: number, p: IPayment) => acc + p.amount, 0),
+        totalAmount,
         data: payments 
       });
     } catch (error: any) {
+      logger.error('Admin reach error: ' + error.message);
       res.status(500).json({ success: false, message: 'Admin fetch failed: ' + error.message });
     }
   }
