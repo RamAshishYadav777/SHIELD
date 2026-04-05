@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useSocket } from './useSocket';
 import { useAuth } from './useAuth';
-import api from '../lib/api';
 
 export const useLocation = () => {
   const [location, setLocation] = useState<[number, number] | null>(null);
@@ -21,6 +20,17 @@ export const useLocation = () => {
       return;
     }
 
+    // get a quick rough lock first
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+        setLocation(prev => (prev ? prev : coords));
+      },
+      () => { }, // fail silently
+      { enableHighAccuracy: false, timeout: 3000 }
+    );
+
+    // start high-accuracy tracking in background
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         const { longitude, latitude } = position.coords;
@@ -36,17 +46,17 @@ export const useLocation = () => {
       },
       (error) => {
         let msg = "Unknown location error";
-        switch(error.code) {
+        switch (error.code) {
           case error.PERMISSION_DENIED: msg = "Location access denied"; break;
           case error.POSITION_UNAVAILABLE: msg = "Location info unavailable"; break;
           case error.TIMEOUT: msg = "Location request timed out"; break;
         }
         console.warn(`SHIELD Location Service: ${msg}`, error.message);
       },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 10000, 
-        maximumAge: 5000 
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000
       }
     );
 

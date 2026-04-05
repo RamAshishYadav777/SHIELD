@@ -32,29 +32,29 @@ export default function FlashAlerts() {
 
     if (socket) {
       socket.on('new-flash-message', (message: FlashMessage) => {
-        // DON'T SHOW FOR THE SENDER (Admin who just sent it)
+        // skip if we are the sender
         if (user && message.createdBy === user.id) return;
 
-        // PERSISTENCE CHECK: Skip if already dismissed
+        // check if user already closed it
         const dismissed = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
         if (dismissed.includes(message._id)) return;
 
-        // LOCATION FILTERING: If message has location, only show if nearby (~50km)
+        // only show if within 50km
         if (message.location && userLocation) {
           const dist = calculateDistance(
             userLocation[1], userLocation[0],
             message.location.coordinates[1], message.location.coordinates[0]
           );
-          if (dist > 50) return; // Skip if too far
+          if (dist > 50) return; 
         }
 
-        // PLAY SIGNAL: Subtle System Alert
+        // play beep
         try {
           const audio = new Audio('https://www.myinstants.com/media/sounds/eas-bleep.mp3');
           audio.volume = 0.5;
-          audio.play().catch(() => { /* skip if browser blocks auto-play */ });
+          audio.play().catch(() => { });
         } catch (e) {
-          console.warn('Audio feedback failed');
+          console.warn('Audio failed');
         }
 
         setMessages((prev) => {
@@ -74,7 +74,7 @@ export default function FlashAlerts() {
       const res = await api.get('/flash/active');
       const active = res.data.data;
       
-      // Filter out persistent dismissed alerts
+      // filter out dismissed alerts
       const dismissed = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
       const filtered = active.filter((m: any) => !dismissed.includes(m._id));
       
@@ -87,7 +87,7 @@ export default function FlashAlerts() {
   const removeMessage = (id: string) => {
     setMessages(prev => prev.filter(m => m._id !== id));
     
-    // SAVE TO PERSISTENT STORAGE
+    // save to localstorage so it stays closed on refresh
     const current = JSON.parse(localStorage.getItem('dismissedAlerts') || '[]');
     if (!current.includes(id)) {
       localStorage.setItem('dismissedAlerts', JSON.stringify([...current, id]));

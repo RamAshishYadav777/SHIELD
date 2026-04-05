@@ -8,7 +8,7 @@ import { setConnected, setSocketId } from '@/store/slices/socketSlice';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 
-// ─── HIGH PERFORMANCE SINGLETONS ──────────────────────────────────────────
+// singletons for audio and socket
 let audioCtx: AudioContext | null = null;
 let globalSocket: Socket | null = null;
 
@@ -68,7 +68,7 @@ export const useSocket = () => {
   }, []);
 
   useEffect(() => {
-    // 1. Initial Connection Logic
+    // connect to socket if logged in
     if (user && !globalSocket) {
       const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
         (process.env.NEXT_PUBLIC_API_URL 
@@ -96,11 +96,11 @@ export const useSocket = () => {
       });
     }
 
-    // 2. Performance Listener Hub
+    // main alert listener
     const activeSocket = globalSocket;
     if (activeSocket && user) {
       const onAlert = (data: any) => {
-        // ONLY SHOW EMERGENCY TOAST FOR SOS TYPE
+        // show emergency toast only for actual SOS
         if (data && data.type === 'SOS') {
           const name = data.userName || data.user || 'Someone';
           playSiren();
@@ -128,7 +128,7 @@ export const useSocket = () => {
       activeSocket.on('system-alert', onAlert);
     }
 
-    // 3. Absolute Cleanup on Exit
+    // cleanup when logging out
     if (!user && globalSocket) {
       globalSocket.disconnect();
       globalSocket = null;

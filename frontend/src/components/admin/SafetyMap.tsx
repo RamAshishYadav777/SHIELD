@@ -15,8 +15,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
-// ─── ICON DEFINITIONS ───────────────────────────────────────────────────────
-
+// custom icons
 const BLUE_ICON = L.icon({
   iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -24,8 +23,7 @@ const BLUE_ICON = L.icon({
   iconAnchor: [12, 41]
 });
 
-// ─── HELPER COMPONENTS ───────────────────────────────────────────────────────
-
+// components for the map stuff
 const LocationMarker = ({ position, onClick }: { position: [number, number] | null, onClick: (coords: [number, number]) => void }) => {
   const targetIcon = L.divIcon({
     className: 'target-pin',
@@ -89,8 +87,7 @@ const RecenterMap = ({ coords, zoom }: { coords: [number, number] | null, zoom?:
   return null;
 };
 
-// ─── GLOBAL SAFETY SCANNER ───────────────────────────────────────────────────
-
+// find nearby safe spots using overpass
 const SafetyScanner = ({ incidents }: { incidents: any[] }) => {
   const map = useMap();
   const [safeSpots, setSafeSpots] = useState<any[]>([]);
@@ -170,8 +167,7 @@ const SafetyScanner = ({ incidents }: { incidents: any[] }) => {
   );
 };
 
-// ─── MAIN MAP COMPONENT ──────────────────────────────────────────────────────
-
+// the main leaflet map container
 interface SafetyMapProps {
   incidents: any[];
   safeZones: any[]; 
