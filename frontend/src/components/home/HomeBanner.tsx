@@ -72,7 +72,6 @@ export default function HomeBanner() {
   }, [index]);
 
   useEffect(() => {
-    // Reset progress but keep videoReady=true to avoid immediate black flash if moving fast
     setProgress(0);
   }, [index]);
 
@@ -81,55 +80,51 @@ export default function HomeBanner() {
   return (
     <div className="relative w-full h-auto lg:h-[88vh] min-h-[600px] overflow-hidden bg-black flex flex-col lg:flex-row mt-20 font-sans border-b border-white/[0.03]">
       
-      {/* PRELOAD NEXT VIDEO */}
-      {isMounted && <video key={`preload-${nextIndex}`} src={BANNER_DATA[nextIndex].video} preload="auto" className="hidden" />}
+      {/* HIDDEN PRELOADER FOR NEXT VIDEO */}
+      <video key={`preload-${nextIndex}`} src={BANNER_DATA[nextIndex].video} preload="auto" className="hidden" aria-hidden="true" />
 
       {/* ── LEFT SIDE: VIDEO SECTION ── */}
       <div className="relative h-[65vh] lg:h-full w-full lg:w-[65%] overflow-hidden bg-black border-b lg:border-r border-white/5">
         
-        {/* PERSISTENT BACKGROUND (Last frame fallback) */}
+        {/* PERSISTENT ARTIFICIAL BACKDROP (Prevents black flash at all costs) */}
         <div className="absolute inset-0 z-0">
-          {isMounted && (
-            <video
-              key={`bg-${lastIndex}`}
-              src={BANNER_DATA[lastIndex].video}
-              autoPlay
-              muted
-              playsInline
-              loop
-              className="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl grayscale"
-            />
-          )}
-          <div className="absolute inset-0 bg-black/60" />
+          <video
+            key={`bg-${lastIndex}`}
+            src={BANNER_DATA[lastIndex].video}
+            autoPlay
+            muted
+            playsInline
+            loop
+            className="absolute inset-0 w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-black/40" />
         </div>
 
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={index}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.5, ease: "linear" }}
             className="absolute inset-0 w-full h-full z-10"
           >
-            {isMounted && (
-              <video
-                ref={videoRef}
-                src={currentBanner.video}
-                autoPlay
-                muted
-                playsInline
-                preload="auto"
-                onEnded={nextSlide}
-                onCanPlay={() => setVideoReady(true)}
-                className={cn(
-                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
-                  videoReady ? "opacity-80" : "opacity-40"
-                )}
-              />
-            )}
+            <video
+              ref={index === index ? videoRef : null}
+              src={BANNER_DATA[index].video}
+              autoPlay
+              muted
+              playsInline
+              preload="auto"
+              onEnded={nextSlide}
+              onCanPlay={() => setVideoReady(true)}
+              className={cn(
+                "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+                videoReady ? "opacity-80" : "opacity-0"
+              )}
+            />
             
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent z-[5]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent z-[5]" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[5]" />
             
             {/* ── HUD ELEMENTS ── */}
