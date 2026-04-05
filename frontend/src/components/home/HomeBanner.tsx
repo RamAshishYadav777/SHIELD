@@ -32,14 +32,19 @@ const BANNER_DATA = [
 export default function HomeBanner() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [videoReady, setVideoReady] = useState(false);
+  const [videoReady, setVideoReady] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [lastIndex, setLastIndex] = useState(0);
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     setIsMounted(true);
+    if (isFirstLoad.current) {
+        setVideoReady(true);
+        isFirstLoad.current = false;
+    }
   }, []);
 
   const nextSlide = useCallback(() => {
@@ -55,7 +60,6 @@ export default function HomeBanner() {
   }, [index]);
 
   const currentBanner = useMemo(() => BANNER_DATA[index], [index]);
-  const prevBanner = useMemo(() => BANNER_DATA[lastIndex], [lastIndex]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -73,6 +77,7 @@ export default function HomeBanner() {
 
   useEffect(() => {
     setProgress(0);
+    // Don't set videoReady(false) here, let cross-fade handle it
   }, [index]);
 
   const nextIndex = (index + 1) % BANNER_DATA.length;
@@ -86,7 +91,7 @@ export default function HomeBanner() {
       {/* ── LEFT SIDE: VIDEO SECTION ── */}
       <div className="relative h-[65vh] lg:h-full w-full lg:w-[65%] overflow-hidden bg-black border-b lg:border-r border-white/5">
         
-        {/* PERSISTENT ARTIFICIAL BACKDROP (Prevents black flash at all costs) */}
+        {/* PERSISTENT ARTIFICIAL BACKDROP (Only cross-fade if strictly necessary) */}
         <div className="absolute inset-0 z-0">
           <video
             key={`bg-${lastIndex}`}
@@ -95,7 +100,7 @@ export default function HomeBanner() {
             muted
             playsInline
             loop
-            className="absolute inset-0 w-full h-full object-cover opacity-30"
+            className="absolute inset-0 w-full h-full object-cover opacity-10"
           />
           <div className="absolute inset-0 bg-black/40" />
         </div>
@@ -106,11 +111,11 @@ export default function HomeBanner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "linear" }}
+            transition={{ duration: 0.4, ease: "linear" }}
             className="absolute inset-0 w-full h-full z-10"
           >
             <video
-              ref={index === index ? videoRef : null}
+              ref={videoRef}
               src={BANNER_DATA[index].video}
               autoPlay
               muted
@@ -120,12 +125,12 @@ export default function HomeBanner() {
               onCanPlay={() => setVideoReady(true)}
               className={cn(
                 "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
-                videoReady ? "opacity-80" : "opacity-0"
+                videoReady ? "opacity-100" : "opacity-0"
               )}
             />
             
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent z-[5]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[5]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent z-[5]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent z-[5]" />
             
             {/* ── HUD ELEMENTS ── */}
             <div className="absolute inset-0 z-10 p-8 lg:p-20 flex flex-col justify-between">
