@@ -69,69 +69,49 @@ export default function HomeBanner() {
 
     video.addEventListener('timeupdate', updateProgress);
     return () => video.removeEventListener('timeupdate', updateProgress);
-  }, [index, videoReady]);
+  }, [index]);
 
   useEffect(() => {
-    setVideoReady(false);
+    // Reset progress but keep videoReady=true to avoid immediate black flash if moving fast
     setProgress(0);
   }, [index]);
 
-  const transitionVariants = {
-    enter: {
-      scale: 1.2,
-      opacity: 0,
-      filter: "blur(10px)",
-    },
-    center: {
-      scale: 1,
-      opacity: 1,
-      filter: "blur(0px)",
-      zIndex: 1,
-    },
-    exit: {
-      scale: 0.9,
-      opacity: 0,
-      filter: "blur(10px)",
-      zIndex: 0,
-    }
-  };
+  const nextIndex = (index + 1) % BANNER_DATA.length;
 
   return (
     <div className="relative w-full h-auto lg:h-[88vh] min-h-[600px] overflow-hidden bg-black flex flex-col lg:flex-row mt-20 font-sans border-b border-white/[0.03]">
       
+      {/* PRELOAD NEXT VIDEO */}
+      {isMounted && <video key={`preload-${nextIndex}`} src={BANNER_DATA[nextIndex].video} preload="auto" className="hidden" />}
+
       {/* ── LEFT SIDE: VIDEO SECTION ── */}
       <div className="relative h-[65vh] lg:h-full w-full lg:w-[65%] overflow-hidden bg-black border-b lg:border-r border-white/5">
         
-        {/* PERSISTENT BACKGROUND (Shows the previous video to avoid black gap) */}
+        {/* PERSISTENT BACKGROUND (Last frame fallback) */}
         <div className="absolute inset-0 z-0">
           {isMounted && (
             <video
-              src={prevBanner.video}
+              key={`bg-${lastIndex}`}
+              src={BANNER_DATA[lastIndex].video}
               autoPlay
               muted
               playsInline
               loop
-              className="absolute inset-0 w-full h-full object-cover opacity-40 blur-md grayscale-[0.2]"
+              className="absolute inset-0 w-full h-full object-cover opacity-20 blur-xl grayscale"
             />
           )}
           <div className="absolute inset-0 bg-black/60" />
         </div>
 
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={index}
-            variants={transitionVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-                duration: 0.8,
-                ease: [0.19, 1, 0.22, 1]
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
             className="absolute inset-0 w-full h-full z-10"
           >
-            <div className="absolute inset-0 bg-neutral-900" />
-            
             {isMounted && (
               <video
                 ref={videoRef}
@@ -143,14 +123,14 @@ export default function HomeBanner() {
                 onEnded={nextSlide}
                 onCanPlay={() => setVideoReady(true)}
                 className={cn(
-                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000",
-                  videoReady ? "opacity-80" : "opacity-0"
+                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
+                  videoReady ? "opacity-80" : "opacity-40"
                 )}
               />
             )}
             
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent z-[5]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent z-[5]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent z-[5]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent z-[5]" />
             
             {/* ── HUD ELEMENTS ── */}
             <div className="absolute inset-0 z-10 p-8 lg:p-20 flex flex-col justify-between">
