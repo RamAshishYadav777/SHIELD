@@ -40,6 +40,7 @@ const messageSchema: Schema<IMessage> = new mongoose.Schema({
 });
 
 messageSchema.index({ location: '2dsphere' });
+messageSchema.index({ neighborhoodId: 1, createdAt: -1 });
 
 const Message: Model<IMessage> = mongoose.model<IMessage>('Message', messageSchema);
 export default Message;

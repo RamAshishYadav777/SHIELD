@@ -32,7 +32,7 @@ const BANNER_DATA = [
 export default function HomeBanner() {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
-  const [videoReady, setVideoReady] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,7 +42,7 @@ export default function HomeBanner() {
   useEffect(() => {
     setIsMounted(true);
     if (isFirstLoad.current) {
-        setVideoReady(true);
+        setVideoReady(false);
         isFirstLoad.current = false;
     }
   }, []);
