@@ -7,6 +7,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { store } from './store';
 import { useSocket } from './hooks/useSocket';
 
+import { LocationProvider } from './hooks/useLocation';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -27,8 +29,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ReduxProvider store={store}>
       <QueryClientProvider client={queryClient}>
         <SocketInitializer>
-          {children}
-          <ReactQueryDevtools initialIsOpen={false} />
+          <LocationProvider>
+            {children}
+            <ReactQueryDevtools initialIsOpen={false} />
+          </LocationProvider>
         </SocketInitializer>
       </QueryClientProvider>
     </ReduxProvider>
