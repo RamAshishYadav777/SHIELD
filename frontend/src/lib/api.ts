@@ -5,22 +5,37 @@ const getBaseURL = () => {
   return url.endsWith('/api') ? url : `${url.replace(/\/$/, '')}/api`;
 };
 
+// setup axios with base url and cookies
 const api = axios.create({
   baseURL: getBaseURL().replace(/\/$/, '') + '/',
   withCredentials: true,
   timeout: 15000,
 });
 
-// Request interceptor to clean URLs
+// add token to headers if we have it in local storage
 api.interceptors.request.use((config) => {
   if (config.url?.startsWith('/')) {
     config.url = config.url.substring(1);
   }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('shield_user');
+    if (stored) {
+      try {
+        const user = JSON.parse(stored);
+        if (user.token) {
+          config.headers.Authorization = `Bearer ${user.token}`;
+        }
+      } catch (e) {
+        // ignore errors
+      }
+    }
+  }
+
   return config;
 });
 
-// Global error handler for session expiration
-// Prevent multiple refresh calls simultaneously
+// variables for token refreshing
 let isRefreshing = false;
 let failedQueue: any[] = [];
 let isLoggingOut = false;
@@ -29,6 +44,7 @@ export const setLoggingOutFlag = (value: boolean) => {
   isLoggingOut = value;
 };
 
+// helper to run all requests that were waiting for refresh
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -40,21 +56,21 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Global error handler for session expiration
+// handle 401 errors by trying to refresh the token
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest: any = error.config;
 
-    const isAuthRequest = originalRequest.url?.includes('/auth/login') || 
-                          originalRequest.url?.includes('/auth/register') || 
-                          originalRequest.url?.includes('/auth/verify-otp') ||
-                          originalRequest.url?.includes('/auth/forgot-password');
+    const isAuthRequest = originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register') ||
+      originalRequest.url?.includes('/auth/verify-otp') ||
+      originalRequest.url?.includes('/auth/forgot-password');
 
     const authPages = ['/login', '/register', '/verify-otp', '/forgot-password', '/reset-password', '/'];
     const isAuthPage = typeof window !== 'undefined' && authPages.includes(window.location.pathname);
 
-    // Only attempt refresh if it's a 401, not logging out, not on auth page/request, and not already a retry or refresh call
+    // if token expired (401), try to get a new one
     if (error.response?.status === 401 && !isLoggingOut && !isAuthPage && !isAuthRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -68,6 +84,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        // call the refresh endpoint
         await axios.get(`${api.defaults.baseURL}auth/refresh`.replace(/\/+/g, '/').replace(':/', '://'), { withCredentials: true });
         isRefreshing = false;
         processQueue(null);
@@ -75,9 +92,6 @@ api.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         processQueue(refreshError, null);
-        
-        // Let the calling component (like AuthContext or a specific page) handle the error
-        // They will know if they need to redirect or if they're on a public page
         return Promise.reject(refreshError);
       }
     }

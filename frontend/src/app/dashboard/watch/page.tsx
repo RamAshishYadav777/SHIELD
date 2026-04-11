@@ -15,7 +15,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { useLocation } from '@/hooks/useLocation';
 import toast from 'react-hot-toast';
 
-// ── MEMOIZED MESSAGE ITEM ──
+// single message component
 const MessageItem = React.memo(({ msg, userId }: { msg: any, userId: string }) => {
   const isMe = msg.user._id === userId;
   return (
@@ -59,7 +59,7 @@ export default function NeighborhoodWatchPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // High-Performance Scroller
+  // scroll chat to end
   const scrollToBottom = useCallback((instant = false) => {
     if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ 
@@ -69,13 +69,14 @@ export default function NeighborhoodWatchPage() {
     }
   }, []);
 
+  // load messages from nearby area
   const fetchMessages = useCallback(async () => {
     if (!location) return;
     try {
       const res = await api.get(`/chat/nearby?lng=${location[0]}&lat=${location[1]}`);
       setMessages(res.data.data || []);
     } catch (error) {
-      console.warn('Failed to load local chat');
+      console.warn('failed to load chat history');
     } finally {
       setLoading(false);
     }
@@ -85,14 +86,16 @@ export default function NeighborhoodWatchPage() {
     if (!location || !socket) return;
     
     fetchMessages();
+    // join a room based on current location
     socket.emit('join-neighborhood', { lat: location[1], lng: location[0] });
 
+    // handle new incoming messages
     const handleMsg = (msg: any) => {
       setMessages(prev => [...prev, msg]);
-      // Use instant scroll for new messages to keep pace with high-frequency activity
       setTimeout(() => scrollToBottom(false), 50);
     };
 
+    // get how many people are online nearby
     const handleCount = (count: number) => {
       setOnlineCount(count);
     };
@@ -106,13 +109,14 @@ export default function NeighborhoodWatchPage() {
     };
   }, [location?.[0], location?.[1], socket, fetchMessages, scrollToBottom]);
 
-  // Initial load scroll
+  // scroll to bottom on first load
   useEffect(() => {
     if (!loading && messages.length > 0) {
         scrollToBottom(true);
     }
   }, [loading, messages.length, scrollToBottom]);
 
+  // send message to everyone nearby
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !socket || !location || !user) return;

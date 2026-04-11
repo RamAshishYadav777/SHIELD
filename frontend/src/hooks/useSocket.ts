@@ -8,7 +8,7 @@ import { setConnected, setSocketId } from '@/store/slices/socketSlice';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 
-// singletons for audio and socket
+// keep audio and socket instances global so they don't break on re-renders
 let audioCtx: AudioContext | null = null;
 let globalSocket: Socket | null = null;
 
@@ -35,47 +35,53 @@ export const useSocket = () => {
   const playSiren = useCallback(async () => {
     const ctx = initAudio();
     if (!ctx) return;
-    
+
     // Resume context if suspended (Browser security requirement)
     if (ctx.state === 'suspended') {
-      try { await ctx.resume(); } catch (e) {}
+      try { await ctx.resume(); } catch (e) { }
     }
 
     const playTone = (freq: number, startTime: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gainNode = ctx.createGain();
-      
+
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
-      
+
       osc.type = 'square';
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      
+
       gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
       gainNode.gain.linearRampToValueAtTime(0.2, ctx.currentTime + startTime + 0.05);
       gainNode.gain.setValueAtTime(0.2, ctx.currentTime + startTime + duration - 0.05);
       gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + startTime + duration);
-      
+
       osc.start(ctx.currentTime + startTime);
       osc.stop(ctx.currentTime + startTime + duration);
     };
 
-    // Tactical 4-cycle siren burst
+    // siren sound for alerts
     for (let i = 0; i < 4; i++) {
-       playTone(950, i * 0.4, 0.2);
-       playTone(750, i * 0.4 + 0.2, 0.2);
+      playTone(950, i * 0.4, 0.2);
+      playTone(750, i * 0.4 + 0.2, 0.2);
     }
   }, []);
 
   useEffect(() => {
-    // connect to socket if logged in
+    // only connect if user is logged in
     if (user && !globalSocket) {
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
-        (process.env.NEXT_PUBLIC_API_URL 
-          ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '') 
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ||
+        (process.env.NEXT_PUBLIC_API_URL
+          ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
           : 'http://localhost:5000');
 
+      // get token for auth
+      const userStr = localStorage.getItem('shield_user');
+      const userData = userStr ? JSON.parse(userStr) : null;
+      const token = userData?.accessToken || userData?.token;
+
       const newSocket = io(socketUrl, {
+        auth: { token }, // sending token for handshake
         reconnectionAttempts: 5,
         reconnectionDelay: 2000,
         transports: ['websocket']
@@ -87,7 +93,13 @@ export const useSocket = () => {
       newSocket.on('connect', () => {
         dispatch(setConnected(true));
         dispatch(setSocketId(newSocket.id || null));
+        
+        // tell server which user this is (legacy, but keeping for room join)
         newSocket.emit('join', user.id);
+      });
+
+      newSocket.on('connect_error', (err) => {
+        console.error('socket error:', err.message);
       });
 
       newSocket.on('disconnect', () => {
@@ -96,14 +108,17 @@ export const useSocket = () => {
       });
     }
 
-    // main alert listener
+    // listen for emergency alerts
     const activeSocket = globalSocket;
     if (activeSocket && user) {
       const onAlert = (data: any) => {
-        // show emergency toast only for actual SOS
+        // play sound and show alert if it's an SOS
         if (data && data.type === 'SOS') {
           const name = data.userName || data.user || 'Someone';
-          playSiren();
+          
+          // siren might fail if browser blocks audio, but toast should still show
+          playSiren().catch(e => console.warn('siren failed:', e));
+          
           toast(`🚨 EMERGENCY: ${name} NEEDS HELP!`, {
             id: 'sos-alert',
             duration: 12000,
@@ -128,22 +143,22 @@ export const useSocket = () => {
       activeSocket.on('system-alert', onAlert);
     }
 
-    // cleanup when logging out
+    // clean up if user logs out
     if (!user && globalSocket) {
       globalSocket.disconnect();
       globalSocket = null;
       setSocket(null);
       dispatch(setConnected(false));
       dispatch(setSocketId(null));
-      
+
       if (audioCtx) {
-        audioCtx.close().catch(() => {});
+        audioCtx.close().catch(() => { });
         audioCtx = null;
       }
     }
 
     return () => {
-      // Intentionally empty: Singleton persists across component lifecycle
+      // keeping the socket open across re-renders
     };
   }, [user, dispatch, playSiren]);
 

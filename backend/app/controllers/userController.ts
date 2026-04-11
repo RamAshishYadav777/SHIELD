@@ -7,30 +7,29 @@ import SOS from '../models/SOS';
 import logger from '../utils/logger';
 
 class UserController {
-  // add emergency contact
+  // add a new person to emergency contact list
   async addContact(req: AuthRequest, res: Response) {
     try {
       const { name, phone, email, relation } = req.body;
       const user = await User.findById(req.user.id);
 
       if (!user) {
-        return res.status(404).json({ success: false, message: 'Who are you? User not found' });
+        return res.status(404).json({ success: false, message: 'who are you? user not found' });
       }
 
-      // max 3 contacts
+      // limit to 3 contacts
       if (user.emergencyContacts.length >= 3) {
-        return res.status(400).json({ success: false, message: 'Maximum limit of 3 emergency contacts reached.' });
+        return res.status(400).json({ success: false, message: 'max 3 contacts allowed' });
       }
 
-      // check payment status for extra slots
+      // check if they paid for extra slots (first one is free)
       if (user.emergencyContacts.length >= 1) {
         if (user.contactSlots < 1) {
            return res.status(403).json({ 
              success: false, 
-             message: 'Additional contact registration requires a one-time payment.' 
+             message: 'you need to pay for more contact slots' 
            });
         }
-        // consume credit
         user.contactSlots -= 1;
       }
 
@@ -39,16 +38,16 @@ class UserController {
 
       res.status(200).json({ success: true, data: user.emergencyContacts });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Failed to add contact: ' + error.message });
+      res.status(500).json({ success: false, message: 'failed to add contact: ' + error.message });
     }
   }
 
-  // remove contact
+  // remove a contact by id
   async deleteContact(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+        return res.status(404).json({ success: false, message: 'user not found' });
       }
       
       user.emergencyContacts = user.emergencyContacts.filter(
@@ -58,24 +57,24 @@ class UserController {
       await user.save();
       res.status(200).json({ success: true, data: user.emergencyContacts });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Delete failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'delete failed: ' + error.message });
     }
   }
 
-  // list contacts
+  // list all emergency contacts
   async getContacts(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User missing' });
+        return res.status(404).json({ success: false, message: 'user missing' });
       }
       res.status(200).json({ success: true, data: user.emergencyContacts });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Fetch contacts error: ' + error.message });
+      res.status(500).json({ success: false, message: 'fetch contacts error: ' + error.message });
     }
   }
 
-  // update live location
+  // update users current lat/lng
   async updateLocation(req: AuthRequest, res: Response) {
     try {
       const { coordinates } = req.body;
@@ -87,83 +86,82 @@ class UserController {
       }, { new: true });
 
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not here' });
+        return res.status(404).json({ success: false, message: 'user not here' });
       }
 
       res.status(200).json({ success: true, data: user.location });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Location update fail: ' + error.message });
+      res.status(500).json({ success: false, message: 'location update fail: ' + error.message });
     }
   }
 
-  // notify arrival at safe zone
+  // log when someone reaches a safe place
   async notifyArrival(req: AuthRequest, res: Response) {
     try {
       const { zoneName } = req.body;
       const user = await User.findById(req.user.id);
       
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+        return res.status(404).json({ success: false, message: 'user not found' });
       }
 
-      // log arrival
       logger.info(`User ${user.name} is safe at ${zoneName}`);
       
       res.status(200).json({ 
         success: true, 
-        message: `Contacts told you reached ${zoneName}` 
+        message: `sent notify to contacts that you're at ${zoneName}` 
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Arrival notification failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'arrival notification failed: ' + error.message });
     }
   }
 
-  // update profile info
+  // change name, phone or password
   async updateProfile(req: AuthRequest, res: Response) {
     try {
       const { name, phone, currentPassword, newPassword } = req.body;
       const user = await User.findById(req.user.id).select('+password');
-      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      if (!user) return res.status(404).json({ success: false, message: 'user not found' });
 
       if (name) user.name = name;
       if (phone) user.phone = phone;
 
-      // verify old password and update
+      // handles password change
       if (currentPassword && newPassword) {
         const isMatch = await user.comparePassword(currentPassword);
-        if (!isMatch) return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+        if (!isMatch) return res.status(401).json({ success: false, message: 'password is wrong' });
         user.password = newPassword;
       }
 
       await user.save();
       res.status(200).json({
         success: true,
-        message: 'Profile updated successfully.',
+        message: 'profile updated ok',
         data: { name: user.name, phone: user.phone, email: user.email }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Profile update failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'profile update failed: ' + error.message });
     }
   }
 
-  // delete account
+  // remove user from system
   async deleteAccount(req: AuthRequest, res: Response) {
     try {
       const user = await User.findByIdAndDelete(req.user.id);
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found' });
+        return res.status(404).json({ success: false, message: 'user not found' });
       }
 
       res.status(200).json({ 
         success: true, 
-        message: 'Account deleted successfully' 
+        message: 'account deleted' 
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Account deletion failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'account deletion failed: ' + error.message });
     }
   }
 
-  // get public stats
+  // get general system stats for home page
   async getPublicStats(req: any, res: Response) {
     try {
       const [userCount, incidentCount, zoneCount] = await Promise.all([
@@ -178,11 +176,11 @@ class UserController {
           users: userCount,
           incidents: incidentCount,
           safeZones: zoneCount,
-          protectionIndex: 98 // static "perfect" score or calculated
+          protectionIndex: 98
         }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Public stats fetch failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'stats fetch failed: ' + error.message });
     }
   }
 }

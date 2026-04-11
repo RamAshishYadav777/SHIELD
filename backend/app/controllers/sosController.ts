@@ -9,13 +9,13 @@ import logger from "../utils/logger";
 import axios from "axios";
 
 class SOSController {
-  // trigger sos signal
+  // when someone hits the sos button
   async triggerSOS(req: AuthRequest, res: Response) {
     try {
       const { coordinates, message } = req.body;
       let address = req.body.address;
 
-      // reverse geocode if no address
+      // get address from lat/lng if not provided
       if (!address || address === "Current Location" || address === "") {
         try {
           const [lng, lat] = coordinates;
@@ -29,13 +29,13 @@ class SOSController {
             address = geoRes.data.display_name.split(",").slice(0, 3).join(",");
           }
         } catch (e) {
-          console.warn("Backend geocoding failed, using placeholder");
+          console.warn("geocoding failed, using generic name");
         }
       }
 
-      // ensure address exists
       address = address || "GPS Pinned Location";
 
+      // get user and their contacts
       const user = await (User.findById(req.user.id) as any).populate(
         "emergencyContacts",
       );
@@ -43,11 +43,12 @@ class SOSController {
       if (!user) {
         return res
           .status(404)
-          .json({ success: false, message: "User not found" });
+          .json({ success: false, message: "user not found" });
       }
 
-      console.log(`[SOS SIGNAL] Saving location: ${address}`);
+      console.log(`[SOS] Saving location: ${address}`);
 
+      // save sos to db
       const sos = await SOS.create({
         user: req.user.id,
         location: {
@@ -58,24 +59,22 @@ class SOSController {
         message,
       });
 
-      // return early to user
+      // send quick response to user so they dont wait
       res.status(201).json({
         success: true,
         data: sos,
         message: "SOS triggered. We are notifying your contacts and admins",
       });
 
-      // --- background alerts ---
-      // handle notifications async to avoid delay for user
+      // run alerts in background so caller doesn't hang
       (async () => {
         try {
           const io = req.app.get("io");
           const admins = await User.find({ role: "admin" });
-          logger.info(
-            `Background SOS alerts: Processing for ${admins.length} admins and ${user.emergencyContacts.length} contacts.`,
-          );
+          
+          logger.info(`Sending alerts to ${admins.length} admins and ${user.emergencyContacts.length} contacts`);
 
-          // socket alerts
+          // blast socket alerts to everyone
           if (io) {
             io.emit("system-alert", {
               type: "SOS",
@@ -84,7 +83,7 @@ class SOSController {
               time: new Date(),
             });
 
-            // live feed update
+            // update live feeds
             io.emit("new-sos", {
               ...sos.toObject(),
               user: {
@@ -94,10 +93,9 @@ class SOSController {
             });
           }
 
-          // Track emails already notified to avoid duplicates
           const notifiedEmails = new Set<string>();
 
-          // notify admins
+          // alert admins via push and email
           for (const admin of admins) {
             notificationController
               .sendNotification(admin._id.toString(), {
@@ -106,9 +104,7 @@ class SOSController {
                 icon: "/logo.png",
               })
               .catch((e) =>
-                logger.error(
-                  `Push failed for admin ${admin._id}: ${e.message}`,
-                ),
+                logger.error(`Push failed for admin ${admin._id}: ${e.message}`),
               );
 
             if (admin.email) {
@@ -116,33 +112,25 @@ class SOSController {
               sendEmail({
                 email: admin.email,
                 subject: `🚨 SYSTEM ALERT: SOS triggered by ${user.name}`,
-                message: `User ${user.name} (${user.phone}) has triggered an emergency SOS alert.`,
+                message: `User ${user.name} has triggered an emergency SOS alert.`,
                 html: `<h2 style="color: red;">🚨 ADMINISTRATIVE SOS ALERT</h2>
                        <p>User <strong>${user.name}</strong> is in distress.</p>
                        <p><strong>GPS:</strong> ${coordinates[1]}, ${coordinates[0]}</p>
                        <a href="https://www.google.com/maps?q=${coordinates[1]},${coordinates[0]}">Open in Google Maps</a>`,
               }).catch((e) =>
-                logger.error(
-                  `Email failed for admin ${admin.email}: ${e.message}`,
-                ),
+                logger.error(`Email failed for admin ${admin.email}: ${e.message}`),
               );
             }
           }
 
-          // notify emergency contacts
+          // alert personal emergency contacts
           for (const contact of user.emergencyContacts as any[]) {
             if (contact.email) {
               const contactEmail = contact.email.toLowerCase();
-              if (notifiedEmails.has(contactEmail)) {
-                logger.info(
-                  `SOS System: Skipping ${contact.email} (already notified as admin)`,
-                );
-                continue;
-              }
+              if (notifiedEmails.has(contactEmail)) continue; // skip if already sent (e.g. they are also admin)
+              
               notifiedEmails.add(contactEmail);
-              logger.info(
-                "send email to contact",
-              );
+              
               sendEmail({
                 email: contact.email,
                 subject: `🚨 EMERGENCY: ${user.name} needs help!`,
@@ -150,7 +138,7 @@ class SOSController {
                 html: `
                   <div style="font-family: sans-serif; padding: 20px; border: 2px solid #ff0000; border-radius: 10px;">
                     <h1 style="color: #ff0000; margin-top: 0;">🚨 EMERGENCY ALERT</h1>
-                    <p><strong>${user.name}</strong> has triggered an SOS signal on the SHIELD Defense Platform.</p>
+                    <p><strong>${user.name}</strong> has triggered an SOS signal.</p>
                     <div style="background: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
                       <p><strong>Message:</strong> ${message || "No message provided"}</p>
                       <p><strong>Coordinates:</strong> ${coordinates[1]}, ${coordinates[0]}</p>
@@ -162,27 +150,12 @@ class SOSController {
                   </div>
                 `,
               })
-                .then(() =>
-                  logger.info(
-                    `SOS System: Successfully sent email to ${contact.email}`,
-                  ),
-                )
-                .catch((e) =>
-                  logger.error(
-                    `SOS System: Email failed for contact ${contact.email}: ${e.message}`,
-                  ),
-                );
-            } else {
-              logger.info(
-                `SOS System: Skipping contact ${contact.name} (No email provided)`,
-              );
+                .then(() => logger.info(`Email sent to ${contact.email}`))
+                .catch((e) => logger.error(`Email failed for ${contact.email}: ${e.message}`));
             }
           }
         } catch (backgroundError: any) {
-          logger.error(
-            "Critical failure in SOS background alert system: " +
-              backgroundError.message,
-          );
+          logger.error("SOS background alerts failed: " + backgroundError.message);
         }
       })();
     } catch (error: any) {
@@ -195,7 +168,7 @@ class SOSController {
     }
   }
 
-  // get active alerts
+  // list all active sos alerts for admins
   async getActiveSOS(req: AuthRequest, res: Response) {
     try {
       const alerts = await SOS.aggregate([
@@ -227,12 +200,12 @@ class SOSController {
         .status(500)
         .json({
           success: false,
-          message: "Fetch active alerts failed: " + error.message,
+          message: "fetch active alerts failed: " + error.message,
         });
     }
   }
 
-  // get user history
+  // get my own sos history
   async getSOSHistory(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.aggregate([
@@ -266,11 +239,12 @@ class SOSController {
         .status(500)
         .json({
           success: false,
-          message: "History fetch failed: " + error.message,
+          message: "history fetch failed: " + error.message,
         });
     }
   }
 
+  // admin only: get all sos logs
   async getAllSOSAdmin(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.aggregate([
@@ -306,7 +280,8 @@ class SOSController {
       res.status(500).json({ success: false, message: error.message });
     }
   }
-  // resolve alert
+  
+  // mark alert as resolved
   async resolveSOS(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
@@ -314,14 +289,14 @@ class SOSController {
       if (!sos) {
         return res
           .status(404)
-          .json({ success: false, message: "SOS alert missing" });
+          .json({ success: false, message: "sos record missing" });
       }
 
-      // auth check
+      // only owner or admin can resolve
       if (sos.user.toString() !== req.user.id && req.user.role !== "admin") {
         return res
           .status(401)
-          .json({ success: false, message: "No permission to resolve this" });
+          .json({ success: false, message: "no permission" });
       }
 
       sos.status = "resolved";
@@ -332,7 +307,7 @@ class SOSController {
     } catch (error: any) {
       res
         .status(500)
-        .json({ success: false, message: "Resolve failed: " + error.message });
+        .json({ success: false, message: "resolve failed: " + error.message });
     }
   }
 }

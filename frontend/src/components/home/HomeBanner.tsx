@@ -119,8 +119,8 @@ export default function HomeBanner() {
       {/* video part */}
       <div className="relative h-[65vh] lg:h-full w-full lg:w-[65%] overflow-hidden bg-black border-b lg:border-r border-white/5">
         
-        {/* background video for crossfade */}
-        <div className="absolute inset-0 z-0">
+        {/* background video for crossfade - only show after first transition to prevent initial dim flicker */}
+        <div className={cn("absolute inset-0 z-0 transition-opacity duration-1000", lastIndex === index ? "opacity-0" : "opacity-100")}>
           <video
             key={`bg-${lastIndex}`}
             src={BANNER_DATA[lastIndex].video}
@@ -139,7 +139,7 @@ export default function HomeBanner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: "easeInOut" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
             className="absolute inset-0 w-full h-full z-10"
           >
             <video
@@ -155,11 +155,11 @@ export default function HomeBanner() {
               onPlaying={() => setVideoReady(true)}
               onError={() => {
                 console.error("Video failed to load");
-                setVideoReady(true); // Show something at least
-                setTimeout(nextSlide, 3000); // Fallback to next slide
+                setVideoReady(true);
+                setTimeout(nextSlide, 3000);
               }}
               className={cn(
-                "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
+                "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
                 videoReady ? "opacity-100" : "opacity-0"
               )}
             />

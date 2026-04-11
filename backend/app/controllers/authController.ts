@@ -7,28 +7,28 @@ import crypto from 'crypto';
 import logger from '../utils/logger';
 
 class AuthController {
-  // user registration
+  // user signup
   async register(req: Request, res: Response) {
     try {
       const { name, email, password, phone, role } = req.body;
-      logger.info(`Registration attempt: ${JSON.stringify({ name, email, phone, role })}`);
+      logger.info(`signup attempt: ${email}`);
 
-      // check email exists
+      // check if user already has an account
       const existingByEmail = await User.findOne({ email });
       if (existingByEmail) {
-        return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
+        return res.status(400).json({ success: false, message: 'email already taken' });
       }
-      // check phone exists
+
       const existingByPhone = await User.findOne({ phone });
       if (existingByPhone) {
-        return res.status(400).json({ success: false, message: 'An account with this phone number already exists.' });
+        return res.status(400).json({ success: false, message: 'phone number already taken' });
       }
 
-      // generate 6 digit otp
+      // make a random 6 digit code
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
 
-      // create user record
+      // save the user to db
       const user = await User.create({
         name,
         email,
@@ -41,6 +41,7 @@ class AuthController {
 
       if (user) {
         const message = `Welcome to SHIELD. Your verification OTP is: ${otp}`;
+        // email stuff
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
             <h1 style="color: #333; text-align: center;">Welcome to SHIELD</h1>
@@ -55,12 +56,12 @@ class AuthController {
         try {
           await sendEmail({ email: user.email, subject: 'Account Verification - SHIELD', message, html });
         } catch (err) {
-          logger.error('Email sending failed during registration');
+          logger.error('failed to send welcome email');
         }
 
         res.status(201).json({
           success: true,
-          message: 'Registration successful. Please check your email for your verification OTP.',
+          message: 'check your email for the code!',
           user: {
             id: user._id.toString(),
             name: user.name,
@@ -74,44 +75,45 @@ class AuthController {
         });
       }
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Registration failed: ' + error.message });
+      res.status(500).json({ success: false, message: 'something went wrong with signup' });
     }
   }
 
-  // login logic
+  // user login
   login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
 
       const user = await User.findOne({ email }).select('+password');
-      
+
       if (user) {
         const match = await user.comparePassword(password);
-        
+
         if (!match) {
-          logger.info(`Login failed for: ${email} - Password mismatch`);
-          return res.status(401).json({ success: false, message: 'Bad credentials, try again' });
+          logger.info(`login failed: wrong password for ${email}`);
+          return res.status(401).json({ success: false, message: 'invalid email or password' });
         }
       } else {
-        logger.info(`Login failed: ${email} - User not found`);
-        return res.status(401).json({ success: false, message: 'Bad credentials, try again' });
+        logger.info(`login failed: user ${email} not found`);
+        return res.status(401).json({ success: false, message: 'invalid email or password' });
       }
 
+      // make sure they verified their email
       if (!user.isVerified) {
-        return res.status(403).json({ success: false, message: 'Your account is not verified. Please check your email for the OTP.' });
+        return res.status(403).json({ success: false, message: 'please verify your account first' });
       }
 
       this.sendTokenResponse(user, 200, res);
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Login error: ' + error.message });
+      res.status(500).json({ success: false, message: 'login error occurred' });
     }
   }
 
-  // helper for token response
+  // function to handle sending the tokens
   private sendTokenResponse(user: any, statusCode: number, res: Response) {
     const accessToken = generateAccessToken(user._id.toString());
     const refreshToken = generateRefreshToken(user._id.toString());
-    
+
     const commonOptions: any = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -120,21 +122,22 @@ class AuthController {
 
     res
       .status(statusCode)
-      // Access token cookie - short life
+      // access token - expires fast
       .cookie('accessToken', accessToken, {
         ...commonOptions,
         expires: new Date(Date.now() + 15 * 60 * 1000) // 15 mins
       })
-      // Refresh token cookie - long life
+      // refresh token - stays for a week
       .cookie('refreshToken', refreshToken, {
         ...commonOptions,
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
       })
-      // Keep old 'token' cookie for compatibility (or transition it to access token)
+      // old token cookie just in case
       .cookie('token', accessToken, commonOptions)
       .json({
         success: true,
         accessToken,
+        token: accessToken, // for backward compatibility in frontend
         refreshToken,
         user: {
           id: user._id.toString(),
@@ -149,20 +152,21 @@ class AuthController {
       });
   }
 
-  // refresh tokens
+  // get a new access token using the refresh token
   async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies.refreshToken;
-    
+
     if (!refreshToken) {
-      return res.status(401).json({ success: false, message: 'No refresh token provided' });
+      return res.status(401).json({ success: false, message: 'no refresh token found' });
     }
 
     try {
-      const decoded = jwt.verify(refreshToken, (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET) as string) as any;
+      const secret = (process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET) as string;
+      const decoded = jwt.verify(refreshToken, secret) as any;
       const user = await User.findById(decoded.id);
-      
+
       if (!user) {
-        return res.status(401).json({ success: false, message: 'Invalid refresh token' });
+        return res.status(401).json({ success: false, message: 'user not found' });
       }
 
       const newAccessToken = generateAccessToken(user._id.toString());
@@ -176,28 +180,28 @@ class AuthController {
           expires: new Date(Date.now() + 15 * 60 * 1000)
         })
         .cookie('token', newAccessToken, {
-           httpOnly: true,
-           secure: process.env.NODE_ENV === 'production',
-           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
         })
         .json({ success: true, accessToken: newAccessToken });
-        
+
     } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+      return res.status(401).json({ success: false, message: 'token expired or invalid' });
     }
   }
 
-  // clear all cookies on logout
+  // log user out and clear all cookies
   async logout(req: Request, res: Response) {
     const isProd = process.env.NODE_ENV === 'production';
     const clearOptions: any = {
-        httpOnly: true,
-        expires: new Date(0),
-        secure: isProd,
-        sameSite: isProd ? 'none' : 'lax',
-        path: '/'
+      httpOnly: true,
+      expires: new Date(0),
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/'
     };
-    
+
     res.cookie('token', 'none', clearOptions);
     res.cookie('accessToken', 'none', clearOptions);
     res.cookie('refreshToken', 'none', clearOptions);
@@ -208,13 +212,13 @@ class AuthController {
     });
   }
 
-  // verify otp helper
+  // verify the code sent to email
   async verifyOTP(req: Request, res: Response) {
     try {
       const { email, otp } = req.body;
 
       if (!email || !otp) {
-        return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+        return res.status(400).json({ success: false, message: 'missing email or code' });
       }
 
       const user = await User.findOne({
@@ -224,7 +228,7 @@ class AuthController {
       }).select('+password');
 
       if (!user) {
-        return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+        return res.status(400).json({ success: false, message: 'invalid or expired code' });
       }
 
       user.isVerified = true;
@@ -234,21 +238,21 @@ class AuthController {
 
       res.status(200).json({
         success: true,
-        message: 'Account verified successfully. You can now log in.'
+        message: 'email verified! you can login now.'
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Verification error: ' + error.message });
+      res.status(500).json({ success: false, message: 'verification failed' });
     }
   }
 
-  // resend otp to user
+  // send the code again if they didn't get it
   async resendOTP(req: Request, res: Response) {
     try {
       const { email } = req.body;
       const user = await User.findOne({ email, isVerified: false }).select('+password');
 
       if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found or already verified' });
+        return res.status(404).json({ success: false, message: 'user not found or already verified' });
       }
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -272,20 +276,20 @@ class AuthController {
         `
       });
 
-      res.status(200).json({ success: true, message: 'New OTP sent to email' });
+      res.status(200).json({ success: true, message: 'sent a new code to your email' });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Resend OTP error: ' + error.message });
+      res.status(500).json({ success: false, message: 'failed to resend code' });
     }
   }
 
-  // forgot password link sender
+  // forgot password sender
   async forgotPassword(req: Request, res: Response) {
     try {
       const { email } = req.body;
       const user = await User.findOne({ email }).select('+password');
 
       if (!user) {
-        return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent' });
+        return res.status(200).json({ success: true, message: 'if that email exists, check your inbox' });
       }
 
       const resetToken = crypto.randomBytes(32).toString('hex');
@@ -294,26 +298,25 @@ class AuthController {
 
       await user.save();
 
-      // Robust identification of Frontend URL
       let frontendUrl = process.env.FRONTEND_URL;
-      
+
       if (!frontendUrl) {
-          const origin = req.get('origin');
-          const referer = req.get('referer');
-          
-          if (origin) {
-              frontendUrl = origin;
-          } else if (referer) {
-              try {
-                  const refUrl = new URL(referer);
-                  frontendUrl = `${refUrl.protocol}//${refUrl.host}`;
-              } catch (e) {
-                  frontendUrl = 'http://localhost:3000';
-              }
-          } else {
-              frontendUrl = 'http://localhost:3000';
-              logger.warn('FRONTEND_URL is not defined in environment variables and could not be determined from request. Falling back to localhost.');
+        const origin = req.get('origin');
+        const referer = req.get('referer');
+
+        if (origin) {
+          frontendUrl = origin;
+        } else if (referer) {
+          try {
+            const refUrl = new URL(referer);
+            frontendUrl = `${refUrl.protocol}//${refUrl.host}`;
+          } catch (e) {
+            frontendUrl = 'http://localhost:3000';
           }
+        } else {
+          frontendUrl = 'http://localhost:3000';
+          logger.warn('FRONTEND_URL not found, using localhost');
+        }
       }
 
       const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
@@ -333,27 +336,26 @@ class AuthController {
 
       try {
         await sendEmail({ email: user.email, subject: 'Password Reset - SHIELD', message, html });
-        res.status(200).json({ success: true, message: 'Reset email sent' });
+        res.status(200).json({ success: true, message: 'check email for reset link' });
       } catch (err) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         await user.save();
-        res.status(500).json({ success: false, message: 'Couldn\'t send email' });
+        res.status(500).json({ success: false, message: 'failed to send email' });
       }
     } catch (error: any) {
-      logger.error(`Forgot Password Error: ${error.message}`);
-      res.status(500).json({ success: false, message: 'Forgot password error: ' + error.message });
+      res.status(500).json({ success: false, message: 'forgot password error' });
     }
   }
 
-  // reset password handler
+  // set the new password
   async resetPassword(req: Request, res: Response) {
     try {
       const token = req.query.token;
       const { password } = req.body;
 
       if (!token || typeof token !== 'string') {
-        return res.status(400).json({ success: false, message: 'Valid reset token is required' });
+        return res.status(400).json({ success: false, message: 'invalid token' });
       }
 
       const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -364,7 +366,7 @@ class AuthController {
       }).select('+password');
 
       if (!user) {
-        return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
+        return res.status(400).json({ success: false, message: 'token expired or bad' });
       }
 
       user.password = password;
@@ -372,19 +374,18 @@ class AuthController {
       user.resetPasswordExpire = undefined;
       await user.save();
 
-      res.status(200).json({ success: true, message: 'Password reset successful' });
+      res.status(200).json({ success: true, message: 'password changed successfully' });
     } catch (error: any) {
-      logger.error(`Reset Password Error: ${error.message}`);
-      res.status(500).json({ success: false, message: 'Reset password error: ' + error.message });
+      res.status(500).json({ success: false, message: 'failed to reset password' });
     }
   }
 
-  // get current user profile
+  // get my info
   async getMe(req: any, res: Response) {
     try {
       const user = await User.findById(req.user.id);
       if (!user) {
-        return res.status(404).json({ success: false, message: 'Couldn\'t find that user' });
+        return res.status(404).json({ success: false, message: 'user not found' });
       }
       res.status(200).json({
         success: true,
@@ -400,7 +401,7 @@ class AuthController {
         }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+      res.status(500).json({ success: false, message: 'error getting profile' });
     }
   }
 }

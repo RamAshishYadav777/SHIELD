@@ -15,7 +15,7 @@ function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const searchParams = useSearchParams();
   const isAdmin = useMemo(() => searchParams.get("role") === "admin", [searchParams]);
@@ -25,7 +25,7 @@ function LoginContent() {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password });
-      
+
       if (isAdmin && res.data.user.role !== "admin") {
         toast.error("Access Denied. Admin credentials required.");
         setLoading(false);
@@ -37,7 +37,7 @@ function LoginContent() {
         setLoading(false);
         return;
       }
-      
+
       login(res.data.user);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Login failed. Please check your details.");
@@ -58,10 +58,10 @@ function LoginContent() {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center pt-20 pb-8 px-6 relative overflow-hidden font-sans">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <motion.div 
+          <motion.div
             animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.15, 0.1] }}
             transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-            className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(185,5,94,0.15)_0%,transparent_60%)]" 
+            className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(185,5,94,0.15)_0%,transparent_60%)]"
           />
         </div>
 
@@ -81,7 +81,7 @@ function LoginContent() {
                 </div>
                 <div className="space-y-2">
                   <span className="inline-flex px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-[0.4em] text-red-500">Admin Login</span>
-                  <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9]">Admin<br/><span className="text-red-500 italic">Area</span></h1>
+                  <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9]">Admin<br /><span className="text-red-500 italic">Area</span></h1>
                 </div>
               </div>
 
@@ -156,15 +156,15 @@ function LoginContent() {
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center pt-16 pb-6 px-6 relative overflow-hidden font-sans">
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
           transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]" 
+          className="absolute -top-[10%] -left-[10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]"
         />
-        <motion.div 
+        <motion.div
           animate={{ scale: [1.2, 1, 1.2], opacity: [0.1, 0.15, 0.1] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-secondary/15 blur-[100px]" 
+          className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-secondary/15 blur-[100px]"
         />
       </div>
 
@@ -179,7 +179,7 @@ function LoginContent() {
 
           <div className="relative bg-neutral-900/40 backdrop-blur-3xl p-8 md:p-10 rounded-[2.5rem] border border-white/5 space-y-6 shadow-2xl overflow-hidden">
             <div className="text-center space-y-4 relative z-10">
-              <motion.div 
+              <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="relative inline-flex w-20 h-20 items-center justify-center mx-auto group/logo"
               >
@@ -187,7 +187,7 @@ function LoginContent() {
                 <Image src="/shield_v10.png" alt="SHIELD Logo" width={80} height={80} className="object-contain relative z-10 drop-shadow-[0_0_20px_rgba(244,130,31,0.4)]" />
               </motion.div>
               <div className="space-y-2">
-                <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9] text-white">Welcome <br/><span className="text-primary italic">Back.</span></h1>
+                <h1 className="text-3xl font-black tracking-tight uppercase leading-[0.9] text-white">Welcome <br /><span className="text-primary italic">Back.</span></h1>
                 <p className="text-neutral-500 text-[10px] font-black uppercase tracking-[0.3em] ml-1">Login to your account</p>
               </div>
             </div>

@@ -14,7 +14,7 @@ export const useAuth = () => {
   const router = useRouter();
   const { user, loading } = useSelector((state: RootState) => state.auth);
 
-  // Use React Query to fetch the user session
+  // get user profile from api
   const { data: userData, isLoading, isError, refetch } = useQuery({
     queryKey: ['auth-me'],
     queryFn: async () => {
@@ -22,10 +22,11 @@ export const useAuth = () => {
         const res = await api.get('/auth/me');
         return res.data.user;
       } catch (err) {
-        return null; // Guest or expired
+        return null; // not logged in or token dead
       }
     },
     initialData: () => {
+      // check local storage first for fast load
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('shield_user');
         if (stored) {
@@ -34,20 +35,17 @@ export const useAuth = () => {
       }
       return null;
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes to avoid redundant checks during a single session
+    staleTime: 5 * 60 * 1000, 
     retry: false,
     refetchOnWindowFocus: true,
   });
 
-  // Redux state is now hydrated synchronously in authSlice.ts to prevent flickering
-
-  // Keep Redux in sync with React Query
+  // sync redux and localstorage when api returns
   useEffect(() => {
     if (!isLoading) {
       const dataToSave = userData ?? null;
       dispatch(setUser(dataToSave));
       
-      // Update local storage snippet
       if (typeof window !== 'undefined') {
         if (dataToSave) {
           localStorage.setItem('shield_user', JSON.stringify(dataToSave));
@@ -61,16 +59,15 @@ export const useAuth = () => {
   const login = useCallback((userData: any) => {
     if (!userData) return;
     
-    // Save to local cache first for instant subsequent navigations
+    // save user locally
     if (typeof window !== 'undefined') {
       localStorage.setItem('shield_user', JSON.stringify(userData));
     }
 
-    // Nuclear state clearing and setting
+    // update state and redirect
     queryClient.setQueryData(['auth-me'], userData);
     dispatch(setUser(userData));
     
-    // Give state a moment to propagate
     setTimeout(() => {
       toast.success(`Welcome back, ${userData.name}!`, { id: 'auth-toast' });
       
@@ -85,19 +82,19 @@ export const useAuth = () => {
       setLoggingOutFlag(true);
       await api.get('/auth/logout');
     } catch (e) {
-      // Ignore
+      // ignore errors during logout
     } finally {
+      // clear everything
       dispatch(logoutUser());
       queryClient.clear();
       if (typeof window !== 'undefined') {
         localStorage.removeItem('shield_user');
-        // Removed global clear() to preserve non-auth settings like dismissed alerts
       }
       
       const { setLoggingOutFlag } = await import('@/lib/api');
       setLoggingOutFlag(false);
       
-      toast.success('Logged out successfully', { id: 'logout-toast' });
+      toast.success('Goodbye!', { id: 'logout-toast' });
       
       setTimeout(() => {
         router.push('/');

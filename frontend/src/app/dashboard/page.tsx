@@ -65,11 +65,12 @@ export default function DashboardPage() {
        if (!lastFetchedLocationRef.current) {
          shouldFetch = true;
        } else {
+         // only refresh if user moves more than 50 meters
          const dist = calculateDistance(
            location[1], location[0],
            lastFetchedLocationRef.current[1], lastFetchedLocationRef.current[0]
          );
-         if (dist > 50) shouldFetch = true; // Refresh every 50 meters
+         if (dist > 50) shouldFetch = true;
        }
 
        if (shouldFetch) {
@@ -80,6 +81,7 @@ export default function DashboardPage() {
      }
   }, [location]);
 
+  // get general data for dashboard
   const fetchDashboardData = async () => {
     try {
       const [historyRes, contactsRes, reportsRes] = await Promise.all([
@@ -91,22 +93,23 @@ export default function DashboardPage() {
       setContacts(contactsRes.data.data.slice(0, 3));
       setMyReports(reportsRes.data.data.slice(0, 3));
     } catch (e: any) {
-      console.error('Core data fetch failed:', e);
+      console.error('failed to get dashboard data');
     }
   };
 
   const lastScanTimeRef = React.useRef<number>(0);
 
+  // find nearby police stations and hospitals
   const fetchSafeHubs = async () => {
     if (!location) return;
     
-    // Strict rate limit: 3 second cooldown for home page
+    // rate limit search to 3 seconds
     const now = Date.now();
     if (now - lastScanTimeRef.current < 3000) return;
     lastScanTimeRef.current = now;
 
     try {
-      // Faster, focused 5km search radius for dashboard
+      // look for hubs in a 5km radius
       const offset = 0.04; 
       const bbox = `${location[1]-offset},${location[0]-offset},${location[1]+offset},${location[0]+offset}`;
       
@@ -117,7 +120,7 @@ export default function DashboardPage() {
       );out center;`;
       
       const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error('System busy, retrying later');
+      if (!res.ok) throw new Error('OSM down');
       const data = await res.json();
       
       if (data.elements) {
@@ -144,33 +147,35 @@ export default function DashboardPage() {
         setNearbyCount(data.elements.length);
       }
     } catch (e) {
-      // Quiet fail to keep dashboard clean
+      // ignore errors
     }
   };
 
+  // get safety score prediction
   const fetchPrediction = async () => {
     if (!location || !location[0] || !location[1]) return;
     try {
       const res = await api.get(`/incidents/prediction?lng=${location[0]}&lat=${location[1]}`);
       setPrediction(res.data.data);
     } catch (e: any) {
-      console.error('Prediction fetch failed');
+      console.error('failed to get safety score');
     } finally {
       setLoading(false);
     }
   };
 
+  // call for help
   const handleSOS = async () => {
     if (!location) {
-       toast.error('LOCATION NOT FOUND: CANNOT SEND FOR HELP');
+       toast.error('CANT GET LOCATION - CANT CALL SOS');
        return;
     }
 
-    toast.loading('CALLING FOR HELP...', { id: 'sos-toast' });
+    toast.loading('SENDING SOS...', { id: 'sos-toast' });
     
     let address = 'Current Location';
     try {
-      // Reverse geocode to get human readable address
+      // get readable address from coordinates
       const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${location[1]}&lon=${location[0]}&zoom=18&addressdetails=1`, {
         headers: { 'User-Agent': 'SHIELD-Safety-App' }
       });
@@ -179,30 +184,29 @@ export default function DashboardPage() {
         address = geoData.display_name?.split(',').slice(0, 3).join(',') || 'Current Location';
       }
     } catch (e) {
-      console.warn('Geocoding slow or failed, using GPS only');
+      console.warn('geocoding slow/failed');
     }
 
     try {
       await api.post('/sos/trigger', {
         coordinates: location,
         address,
-        message: 'URGENT: I need help right now!'
+        message: 'I need help!'
       });
-      toast.success('HELP SIGNAL SENT!', { id: 'sos-toast', duration: 5000, icon: '🚨' });
+      toast.success('SOS SENT!', { id: 'sos-toast', duration: 5000, icon: '🚨' });
       fetchDashboardData(); 
     } catch (e: any) {
-      toast.error('FAILED: TRY AGAIN', { id: 'sos-toast' });
+      toast.error('SOS FAILED - TRY AGAIN', { id: 'sos-toast' });
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 pb-20">
       
-      {/* ── SAFETY STATUS CARD ── */}
+      {/* safety score card */}
       <Card className="p-8 border-white/5 bg-[#120B16] bg-gradient-to-r from-[#120B16] to-[#1D1024] rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 h-full shadow-2xl overflow-hidden relative border-none">
         
         <div className="flex items-center gap-8 w-full">
-          {/* Circular Score Profile */}
           <div className="relative flex items-center justify-center shrink-0">
              <motion.div
                animate={(!location || !prediction) ? { rotate: 360 } : { rotate: 0 }}
@@ -241,7 +245,7 @@ export default function DashboardPage() {
                 {prediction ? prediction.riskLevel : 'Analyzing'} Status <Zap className={`text-accent-orange ${prediction ? 'fill-accent-orange' : 'animate-pulse'}`} size={22} />
              </h2>
              <p className={`text-sm font-medium max-w-xl italic ${prediction ? 'text-text-secondary' : 'text-text-secondary/50 animate-pulse'}`}>
-                "{prediction ? prediction.recommendation : 'Scanning local threat vectors and gathering global safety intelligence...'}"
+                "{prediction ? prediction.recommendation : 'Scanning for safety threats...'}"
              </p>
           </div>
         </div>
@@ -254,17 +258,16 @@ export default function DashboardPage() {
         </button>
       </Card>
 
-      {/* ── SOS TRIGGER CARD ── */}
+      {/* big sos button card */}
       <Card className="p-10 md:p-14 border-white/5 bg-[#0F0C13] rounded-[3rem] overflow-hidden relative shadow-2xl flex flex-col md:flex-row items-center justify-between gap-12 border-none">
-        {/* Glow */}
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D10B66]/10 blur-[130px] rounded-full pointer-events-none"></div>
 
         <div className="space-y-8 relative z-10 max-w-xl flex-1">
           <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
-            Precision Safety.<br />Zero Delay.
+            SOS Lifeline
           </h1>
           <p className="text-neutral-400 text-base md:text-lg leading-relaxed font-medium">
-            Your immediate lifeline in crisis. Instantly transmit high-precision GPS coordinates to your verified network and community safety hubs.
+            Emergency help is one tap away. Notifies your contacts and nearby admins instantly.
           </p>
           
           <div className="flex items-center gap-6 pt-6">
@@ -283,18 +286,16 @@ export default function DashboardPage() {
              </div>
              <div>
                 <p className="font-bold text-white text-sm tracking-wide uppercase">{contacts.length || 1} EMERGENCY CONTACTS</p>
-                <p className="text-[11px] text-neutral-500 font-medium">Synced with SOS mesh</p>
+                <p className="text-[11px] text-neutral-500 font-medium">Synced and ready</p>
              </div>
           </div>
         </div>
 
         <div className="relative z-10 flex items-center justify-center md:justify-end flex-1">
             <div className="relative flex items-center justify-center">
-               {/* Radar Ripples */}
                <div className="absolute inset-4 rounded-full border-4 border-[#D10B66]/60 animate-[ripple_3s_ease-out_infinite]" />
                <div className="absolute inset-4 rounded-full border-4 border-[#D10B66]/40 animate-[ripple_3s_ease-out_infinite_1.5s]" />
                
-               {/* Main Button */}
                <button 
                  onClick={handleSOS}
                  className="relative w-64 h-64 md:w-80 md:h-80 rounded-full shadow-[0_0_80px_rgba(209,11,102,0.6)] flex flex-col items-center justify-center active:scale-95 transition-all outline-none cursor-pointer group animate-[sosBreath_3s_ease-in-out_infinite] border-[8px] border-[#1D0C14] bg-gradient-to-br from-[#FF1A66] to-[#af0854]"
@@ -307,13 +308,13 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* ── MY REPORTS STATUS ── */}
+      {/* my incident reports */}
       {myReports.length > 0 && (
         <Card className="p-8 border-white/5 bg-[#0F0C13] rounded-[2.5rem] shadow-2xl border-none">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold flex items-center gap-3 text-white italic transition-all group">
               <Shield size={24} className="text-accent-orange group-hover:rotate-12 duration-500" /> 
-              My Reported <span className="text-white/40 not-italic">Incidents</span>
+              My Reported Incidents
             </h3>
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Live Tracking</span>
           </div>
@@ -355,7 +356,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* ── LOWER CONTENT PRESERVED ── */}
+      {/* contact list and nearby hubs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         
         {/* Contact List */}

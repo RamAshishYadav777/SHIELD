@@ -36,7 +36,7 @@ const getInitialUser = () => {
 
 const initialState: AuthState = {
   user: getInitialUser(),
-  loading: typeof window === 'undefined' || !getInitialUser(), 
+  loading: typeof window === 'undefined' || !getInitialUser(),
 };
 
 const authSlice = createSlice({
