@@ -159,8 +159,9 @@ export default function HomeBanner() {
                 setTimeout(nextSlide, 3000);
               }}
               className={cn(
-                "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
-                videoReady ? "opacity-100" : "opacity-0"
+                "absolute inset-0 w-full h-full object-cover",
+                videoReady || index === 0 ? "opacity-100" : "opacity-0",
+                "transition-opacity duration-300"
               )}
             />
             
