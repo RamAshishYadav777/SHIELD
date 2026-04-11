@@ -45,6 +45,14 @@ export default function HomeBanner() {
         setVideoReady(false);
         isFirstLoad.current = false;
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && videoRef.current) {
+        videoRef.current.play().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   const nextSlide = useCallback(() => {
@@ -76,8 +84,28 @@ export default function HomeBanner() {
   }, [index]);
 
   useEffect(() => {
+    // Reset video state on slide change
+    setVideoReady(false);
     setProgress(0);
-    // Don't set videoReady(false) here, let cross-fade handle it
+
+    // Give it a tiny moment to mount the new DOM element if any
+    const timer = setTimeout(() => {
+      if (videoRef.current) {
+        // Explicitly load and play for robustness
+        videoRef.current.load();
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            // Some browsers block autoplay, we still want to show the video
+            console.log("Autoplay was prevented:", error);
+            // Fallback: at least show the first frame instead of staying "dim"
+            setVideoReady(true);
+          });
+        }
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [index]);
 
   const nextIndex = (index + 1) % BANNER_DATA.length;
@@ -100,9 +128,9 @@ export default function HomeBanner() {
             muted
             playsInline
             loop
-            className="absolute inset-0 w-full h-full object-cover opacity-10"
+            className="absolute inset-0 w-full h-full object-cover opacity-20"
           />
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
 
         <AnimatePresence mode="popLayout" initial={false}>
@@ -111,7 +139,7 @@ export default function HomeBanner() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: "linear" }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
             className="absolute inset-0 w-full h-full z-10"
           >
             <video
@@ -123,8 +151,15 @@ export default function HomeBanner() {
               preload="auto"
               onEnded={nextSlide}
               onCanPlay={() => setVideoReady(true)}
+              onLoadedData={() => setVideoReady(true)}
+              onPlaying={() => setVideoReady(true)}
+              onError={() => {
+                console.error("Video failed to load");
+                setVideoReady(true); // Show something at least
+                setTimeout(nextSlide, 3000); // Fallback to next slide
+              }}
               className={cn(
-                "absolute inset-0 w-full h-full object-cover transition-opacity duration-300",
+                "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
                 videoReady ? "opacity-100" : "opacity-0"
               )}
             />
