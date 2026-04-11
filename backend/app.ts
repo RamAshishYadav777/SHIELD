@@ -14,6 +14,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import logger from './app/utils/logger';
 import dbConnect from './app/config/dbConnect';
+import { initSocket } from './app/socket/socketHandler';
 
 
 // env vars
@@ -31,6 +32,9 @@ if ((missingEnv.length > 0 || !dbUri) && process.env.NODE_ENV === 'production') 
   console.error(`ERROR: Missing critical environment variables: ${allMissing.join(', ')}`);
   process.exit(1);
 }
+
+// connect to database
+dbConnect();
 
 const app = express();
 const server = http.createServer(app);
@@ -99,87 +103,9 @@ app.use(session({
 }));
 app.use(flash());
 
-// db
-dbConnect();
 
-// socket imports
-import User from './app/models/User';
-import chatController from './app/controllers/chatController';
-
-// socket handlers
-io.on('connection', (socket) => {
-  logger.info(`New client connected: ${socket.id}`);
-
-  socket.on('join', (userId: string) => {
-    socket.join(userId);
-    logger.info(`User ${userId} joined their private room`);
-  });
-
-  socket.on('join-neighborhood', ({ lat, lng }: { lat: number, lng: number }) => {
-    const neighborhoodId = `neighborhood-${lat.toFixed(1)}-${lng.toFixed(1)}`;
-    socket.join(neighborhoodId);
-    // @ts-ignore
-    socket.neighborhoodId = neighborhoodId;
-
-    const count = io.sockets.adapter.rooms.get(neighborhoodId)?.size || 0;
-    io.to(neighborhoodId).emit('neighborhood-count-update', count);
-    logger.info(`Socket ${socket.id} joined ${neighborhoodId}. Total: ${count}`);
-  });
-
-  socket.on('send-neighborhood-message', async (data: any) => {
-    const { userId, content, lat, lng } = data;
-    const neighborhoodId = `neighborhood-${lat.toFixed(1)}-${lng.toFixed(1)}`;
-
-    const savedMsg = await chatController.saveMessage({
-      user: userId,
-      content,
-      neighborhoodId,
-      location: { type: 'Point', coordinates: [lng, lat] }
-    });
-
-    if (savedMsg) {
-      io.to(neighborhoodId).emit('neighborhood-message-received', savedMsg);
-    }
-  });
-
-  socket.on('update-location', async ({ userId, coordinates }: { userId: string, coordinates: number[] }) => {
-    try {
-      await User.findByIdAndUpdate(userId, {
-        location: {
-          type: 'Point',
-          coordinates: coordinates,
-          updatedAt: new Date()
-        }
-      });
-
-      socket.to(`room-${userId}`).emit('location-received', {
-        userId,
-        coordinates,
-        timestamp: Date.now()
-      });
-    } catch (err) {
-      console.error('Location update error:', err);
-    }
-  });
-
-  socket.on('sos-triggered', async (data: any) => {
-    socket.broadcast.emit('system-alert', {
-      type: 'SOS',
-      userName: data.userName,
-      coordinates: data.coordinates
-    });
-  });
-
-  socket.on('disconnect', () => {
-    // @ts-ignore
-    const nId = socket.neighborhoodId;
-    if (nId) {
-      const count = io.sockets.adapter.rooms.get(nId)?.size || 0;
-      io.to(nId).emit('neighborhood-count-update', count);
-    }
-    logger.info('Client disconnected');
-  });
-});
+// socket handler
+initSocket(io);
 
 // routes
 import authRoutes from './app/routes/authRoutes';

@@ -6,7 +6,7 @@ import { ArrowRight, Shield, Map, PhoneCall, Zap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-// ─── DATA CONFIGURATION (Full 19 Reel System) ─────────────────────────────────
+// banner data
 const BANNER_DATA = [
   { id: 1,  title: "DATA SECURE",  subtitle: "SAFE JOURNEY",  description: "YOUR PRIVATE INFORMATION AND LOCATION ARE ALWAYS SAFE WITH US.", video: "/homeBanner/hb1.mp4" },
   { id: 2,  title: "WATCHING",     subtitle: "ALWAYS SAFE",   description: "WE ARE ALWAYS HERE TO HELP YOU STAY SAFE THROUGHOUT THE DAY.", video: "/homeBanner/hb2.mp4" },
@@ -113,13 +113,13 @@ export default function HomeBanner() {
   return (
     <div className="relative w-full h-auto lg:h-[88vh] min-h-[600px] overflow-hidden bg-black flex flex-col lg:flex-row mt-20 font-sans border-b border-white/[0.03]">
       
-      {/* HIDDEN PRELOADER FOR NEXT VIDEO */}
+      {/* preloader for next video */}
       <video key={`preload-${nextIndex}`} src={BANNER_DATA[nextIndex].video} preload="auto" className="hidden" aria-hidden="true" />
 
-      {/* ── LEFT SIDE: VIDEO SECTION ── */}
+      {/* video part */}
       <div className="relative h-[65vh] lg:h-full w-full lg:w-[65%] overflow-hidden bg-black border-b lg:border-r border-white/5">
         
-        {/* PERSISTENT ARTIFICIAL BACKDROP (Only cross-fade if strictly necessary) */}
+        {/* background video for crossfade */}
         <div className="absolute inset-0 z-0">
           <video
             key={`bg-${lastIndex}`}
@@ -167,7 +167,7 @@ export default function HomeBanner() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent z-[5]" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-transparent z-[5]" />
             
-            {/* ── HUD ELEMENTS ── */}
+            {/* text and tags */}
             <div className="absolute inset-0 z-10 p-8 lg:p-20 flex flex-col justify-between">
               
               <div className="flex items-center gap-4">
@@ -215,7 +215,7 @@ export default function HomeBanner() {
         </AnimatePresence>
       </div>
 
-      {/* ── RIGHT SIDE: ACTION SECTION ── */}
+      {/* right side text and buttons */}
       <div className="relative h-auto lg:h-full w-full lg:w-[35%] overflow-hidden flex flex-col justify-center px-8 lg:px-20 py-20 lg:py-0 bg-neutral-950">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-0 right-0 w-full h-full bg-primary/5 blur-[120px]" />
