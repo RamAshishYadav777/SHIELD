@@ -6,7 +6,7 @@ import SafeZone from '../models/SafeZone';
 import logger from '../utils/logger';
 
 class AdminController {
-  // list users
+  // get all users
   async getAllUsers(req: AuthRequest, res: Response) {
     try {
       const users = await User.aggregate([
@@ -18,59 +18,41 @@ class AdminController {
         },
       ]);
       logger.info(`Admin ${req.user.name} fetched all user records.`);
-      res.status(200).json({ 
-        success: true, 
-        count: users.length, 
-        data: users 
+      res.status(200).json({
+        success: true,
+        count: users.length,
+        data: users
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: 'Fetch all users failed: ' + error.message });
     }
   }
 
-  // toggle block
+  // block or unblock
   async toggleBlockUser(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.params.id);
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-      
+
       // update status
       user.isBlocked = !user.isBlocked;
       await user.save();
-      
+
       const status = user.isBlocked ? 'blocked' : 'unblocked';
       logger.info(`Admin ${req.user.name} ${status} user: ${user.email}`);
-      
-      res.status(200).json({ 
-        success: true, 
+
+      res.status(200).json({
+        success: true,
         message: `User ${status} successfully.`,
-        data: user 
+        data: user
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: 'Blocking toggle failed: ' + error.message });
     }
   }
+  // reports
 
-  // delete user
-  async adminDeleteUser(req: AuthRequest, res: Response) {
-    try {
-      const user = await User.findByIdAndDelete(req.params.id);
-      if (!user) return res.status(404).json({ success: false, message: 'User record not found.' });
-      
-      logger.warn(`Admin ${req.user.name} PERMANENTLY DELETED user: ${user.email}`);
-      
-      res.status(200).json({ 
-        success: true, 
-        message: 'User account has been permanently removed from the SHIELD network.' 
-      });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'User deletion failed: ' + error.message });
-    }
-  }
-
-  // incidents
-
-  // verify incident
+  // verify report
   async toggleIncidentVerification(req: AuthRequest, res: Response) {
     try {
       const incident = await Incident.findById(req.params.id);
@@ -88,7 +70,7 @@ class AdminController {
     }
   }
 
-  // delete incident
+  // remove report
   async adminDeleteIncident(req: AuthRequest, res: Response) {
     try {
       const incident = await Incident.findByIdAndDelete(req.params.id);
@@ -102,9 +84,9 @@ class AdminController {
     }
   }
 
-  // safe zones
+  // hubs
 
-  // create zone
+  // make hub
   async adminCreateSafeZone(req: AuthRequest, res: Response) {
     try {
       const zone = await SafeZone.create(req.body);
@@ -115,7 +97,7 @@ class AdminController {
     }
   }
 
-  // delete zone
+  // remove hub
   async adminDeleteSafeZone(req: AuthRequest, res: Response) {
     try {
       const zone = await SafeZone.findByIdAndDelete(req.params.id);
@@ -125,26 +107,6 @@ class AdminController {
       res.status(200).json({ success: true, message: 'Safety hub record permanently removed from SHIELD.' });
     } catch (error: any) {
       res.status(500).json({ success: false, message: 'Safe hub deletion failed: ' + error.message });
-    }
-  }
-
-  // remove specific contact for user
-  async adminDeleteUserContact(req: AuthRequest, res: Response) {
-    try {
-      const { userId, contactId } = req.params;
-      const user = await User.findById(userId);
-      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-      user.emergencyContacts = user.emergencyContacts.filter(
-        (c: any) => c._id!.toString() !== contactId
-      );
-
-      await user.save();
-      logger.info(`Admin ${req.user.name} REMOVED contact ${contactId} from user ${userId}`);
-      
-      res.status(200).json({ success: true, data: user.emergencyContacts });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: 'Failed to remove contact: ' + error.message });
     }
   }
 }

@@ -12,26 +12,10 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// add token to headers if we have it in local storage
 api.interceptors.request.use((config) => {
   if (config.url?.startsWith('/')) {
     config.url = config.url.substring(1);
   }
-
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('shield_user');
-    if (stored) {
-      try {
-        const user = JSON.parse(stored);
-        if (user.token) {
-          config.headers.Authorization = `Bearer ${user.token}`;
-        }
-      } catch (e) {
-        // ignore errors
-      }
-    }
-  }
-
   return config;
 });
 

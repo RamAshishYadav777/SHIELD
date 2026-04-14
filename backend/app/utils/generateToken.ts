@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
 
-// makers for access token (short lived)
+// access token lasts 4 hours — long enough for a normal session
 export const generateAccessToken = (id: string): string => {
   return jwt.sign({ id }, (process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET) as string, {
-    expiresIn: '15m'
+    expiresIn: '4h'
   });
 };
 

@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import FlashMessage from '../models/FlashMessage';
 
 class FlashController {
-  // admin can make a flash message for everyone
+  // global alert
   async createFlashMessage(req: AuthRequest, res: Response) {
     try {
       const { title, message, type, durationInHours, areaName, coordinates } = req.body;
@@ -34,7 +34,7 @@ class FlashController {
 
       const io = req.app.get('io');
       if (io) {
-        // BROADCAST TO EVERYONE: "show everyone" as per instruction
+        // broadcast
         io.emit('new-flash-message', flash);
         io.emit('system-alert', {
            type: 'FLASH_ALERT',
@@ -49,7 +49,7 @@ class FlashController {
     }
   }
 
-  // showing only messages that are still active
+  // active alerts
   async getActiveFlashMessages(req: Request, res: Response) {
     try {
       const messages = await FlashMessage.find({

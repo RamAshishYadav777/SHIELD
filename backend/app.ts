@@ -12,7 +12,7 @@ import flash from 'connect-flash';
 import { Server } from 'socket.io';
 import { rateLimit } from 'express-rate-limit';
 
-// local imports
+// imports
 import logger from './app/utils/logger';
 import dbConnect from './app/config/dbConnect';
 import { initSocket } from './app/socket/socketHandler';
@@ -29,7 +29,7 @@ import chatRoutes from './app/routes/chatRoutes';
 import paymentRoutes from './app/routes/paymentRoutes';
 import adminRoutes from './app/routes/adminRoutes';
 
-// config and env setup
+// config
 dotenv.config();
 
 const REQUIRED_ENV = ['JWT_SECRET', 'SESSION_SECRET'];
@@ -42,12 +42,12 @@ if ((missingEnv.length > 0 || !dbUri) && process.env.NODE_ENV === 'production') 
   process.exit(1);
 }
 
-// connect to database and start app
+// db and app start
 dbConnect();
 const app = express();
 const server = http.createServer(app);
 
-// setup cors domains
+// cors
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000', 
@@ -65,7 +65,7 @@ const io = new Server(server, {
 app.set('io', io);
 app.set('trust proxy', process.env.NODE_ENV === 'production');
 
-// security and core middlewares
+// security
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({
   origin: allowedOrigins.length > 0 ? allowedOrigins : true,
@@ -87,12 +87,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// request logging
+// logs
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms', {
   stream: { write: (message) => logger.http(message.trim()) }
 }));
 
-// prevent too many hits to api
+// rate limit
 const limiter = (max: number) => rateLimit({
   windowMs: 15 * 60 * 1000,
   max,
@@ -104,7 +104,7 @@ const limiter = (max: number) => rateLimit({
 app.use('/api/', limiter(5000));
 app.use(['/api/auth/', '/api/sos/'], limiter(2000));
 
-// session and flash messages
+// session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'secret',
   resave: false,
@@ -117,10 +117,10 @@ app.use(session({
 }));
 app.use(flash());
 
-// init socket handlers
+// sockets
 initSocket(io);
 
-// load all api routes
+// routes
 const routesMap: any = {
   auth: authRoutes, 
   sos: sosRoutes, 
@@ -136,7 +136,7 @@ const routesMap: any = {
 
 Object.keys(routesMap).forEach(p => app.use(`/api/${p}`, routesMap[p]));
 
-// health and status checks
+// health check
 app.get('/', (req, res) => res.json({ message: 'Welcome to SHIELD API' }));
 
 app.get('/health', (req: Request, res: Response) => {
@@ -162,13 +162,13 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   res.status(err.code === 'LIMIT_FILE_SIZE' ? 400 : 500).json({ success: false, message: msg });
 });
 
-// listen for requests
+// start server
 const PORT = process.env.PORT || 5000;
 const serverInstance = server.listen(PORT, () => {
   logger.info(`Server running on port ${PORT}`);
 });
 
-// handle server stop
+// stop server
 const shutdown = (sig: string) => {
   logger.info(`${sig} - stopping server...`);
   serverInstance.close(() => mongoose.connection.close(false).then(() => process.exit(0)));

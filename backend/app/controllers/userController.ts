@@ -7,7 +7,7 @@ import SOS from '../models/SOS';
 import logger from '../utils/logger';
 
 class UserController {
-  // add a new person to emergency contact list
+  // add contact
   async addContact(req: AuthRequest, res: Response) {
     try {
       const { name, phone, email, relation } = req.body;
@@ -42,7 +42,7 @@ class UserController {
     }
   }
 
-  // remove a contact by id
+  // remove contact
   async deleteContact(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
@@ -61,7 +61,7 @@ class UserController {
     }
   }
 
-  // list all emergency contacts
+  // get contacts
   async getContacts(req: AuthRequest, res: Response) {
     try {
       const user = await User.findById(req.user.id);
@@ -74,7 +74,7 @@ class UserController {
     }
   }
 
-  // update users current lat/lng
+  // location update
   async updateLocation(req: AuthRequest, res: Response) {
     try {
       const { coordinates } = req.body;
@@ -95,7 +95,7 @@ class UserController {
     }
   }
 
-  // log when someone reaches a safe place
+  // safe at hub
   async notifyArrival(req: AuthRequest, res: Response) {
     try {
       const { zoneName } = req.body;
@@ -116,7 +116,7 @@ class UserController {
     }
   }
 
-  // change name, phone or password
+  // edit profile
   async updateProfile(req: AuthRequest, res: Response) {
     try {
       const { name, phone, currentPassword, newPassword } = req.body;
@@ -144,7 +144,7 @@ class UserController {
     }
   }
 
-  // remove user from system
+  // delete me
   async deleteAccount(req: AuthRequest, res: Response) {
     try {
       const user = await User.findByIdAndDelete(req.user.id);
@@ -161,7 +161,7 @@ class UserController {
     }
   }
 
-  // get general system stats for home page
+  // stats
   async getPublicStats(req: any, res: Response) {
     try {
       const [userCount, incidentCount, zoneCount] = await Promise.all([

@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { getCookie } from '@/lib/cookies';
 
 interface User {
   id: string;
@@ -13,6 +14,7 @@ interface User {
     type: string;
     coordinates: [number, number];
   };
+  token?: string;
 }
 
 interface AuthState {
@@ -22,7 +24,7 @@ interface AuthState {
 
 const getInitialUser = () => {
   if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('shield_user');
+    const stored = getCookie('shield_profile');
     if (stored) {
       try {
         return JSON.parse(stored);

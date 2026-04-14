@@ -14,8 +14,7 @@ import Link from 'next/link';
 import { useSocket } from '@/hooks/useSocket';
 import toast from 'react-hot-toast';
 
-// ── MEMOIZED SUB-COMPONENTS FOR HIGH PERFORMANCE ──
-// These ensure that existing rows don't re-render when new data arrives elsewhere
+// rows
 const SOSRow = React.memo(({ sos, onRescueInfo }: { sos: any, onRescueInfo: (user: any) => void }) => (
   <div className="p-6 flex flex-col xl:flex-row xl:items-center justify-between group hover:bg-white/[0.02] transition-colors border-l-4 border-transparent hover:border-red-500 will-change-transform">
       <div className="flex items-center gap-4 flex-1 mb-4 xl:mb-0">
@@ -108,11 +107,11 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSOSUser, setSelectedSOSUser] = useState<any>(null);
   
-  // High-Performance Refetch Guard
+  // guard
   const lastFetchRef = useRef(0);
 
   const fetchAll = useCallback(async (isAuto = false) => {
-    // Throttle manual/socket refreshes to once every 2.5 seconds to prevent network lag
+    // throttle
     const now = Date.now();
     if (!isAuto && now - lastFetchRef.current < 2500) return;
     lastFetchRef.current = now;
@@ -122,7 +121,7 @@ export default function AdminDashboardPage() {
         api.get('/incidents').catch(() => ({ data: { data: [] } })),
         api.get('/sos/admin/history').catch(() => ({ data: { data: [] } })),
         api.get('/safezones/nearby?lng=0&lat=0&distance=999999').catch(() => ({ data: { count: 0 } })),
-        api.get('/users/admin/all').catch(() => ({ data: { count: 0, data: [] } })),
+        api.get('/admin/all').catch(() => ({ data: { count: 0, data: [] } })),
         api.get('/payments/admin/all').catch(() => ({ data: { data: [], totalAmount: 0 } })),
       ]);
 
@@ -155,7 +154,7 @@ export default function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, [fetchAll]);
 
-  // Real-time Update Guard
+  // socket listener
   useEffect(() => {
     if (!socket) return;
     const handleUpdate = () => fetchAll();
@@ -178,7 +177,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 px-4 sm:px-0">
-      {/* Header */}
+      {/* head */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <h1 className="text-2xl md:text-3xl font-bold mb-2 tracking-tight">Platform Overview</h1>
@@ -197,7 +196,7 @@ export default function AdminDashboardPage() {
         </motion.div>
       </div>
 
-      {/* Stats Grid */}
+      {/* status */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {dashboardStats.map((stat, i) => (
           <motion.div
@@ -222,7 +221,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* ── LIVE SOS ACTIVITY ── */}
+      {/* sos */}
       <Card className="p-0 border-red-500/20 overflow-hidden rounded-[2.5rem] bg-red-900/5 backdrop-blur-xl relative shadow-2xl">
           <div className="p-6 border-b border-red-500/10 flex items-center justify-between bg-red-500/5">
               <h2 className="text-lg font-bold flex items-center gap-3 text-red-500 italic">
@@ -240,7 +239,7 @@ export default function AdminDashboardPage() {
           </div>
       </Card>
 
-      {/* ── INCIDENT PULSE ── */}
+      {/* incidents */}
       <Card className="p-0 border-white/10 overflow-hidden rounded-[2.5rem] bg-neutral-900/40 backdrop-blur-xl">
           <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
               <h2 className="text-lg font-bold flex items-center gap-2 uppercase tracking-tight">
@@ -257,7 +256,7 @@ export default function AdminDashboardPage() {
           </div>
       </Card>
 
-      {/* ── EMERGENCY CONTACT MODAL ── */}
+      {/* modal */}
       <AnimatePresence>
         {selectedSOSUser && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

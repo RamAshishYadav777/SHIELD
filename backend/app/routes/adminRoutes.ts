@@ -9,7 +9,7 @@ router.use(authorize('admin'));
 
 router.get('/all', adminController.getAllUsers);
 router.put('/users/block/:id', adminController.toggleBlockUser);
-router.delete('/users/:id', adminController.adminDeleteUser);
+
 
 // Incident Oversight
 router.put('/incidents/verify/:id', adminController.toggleIncidentVerification);
@@ -19,7 +19,5 @@ router.delete('/incidents/:id', adminController.adminDeleteIncident);
 router.post('/safezones', adminController.adminCreateSafeZone);
 router.delete('/safezones/:id', adminController.adminDeleteSafeZone);
 
-// User Profile Moderation
-router.delete('/users/:userId/contacts/:contactId', adminController.adminDeleteUserContact);
 
 export default router;

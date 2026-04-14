@@ -5,13 +5,13 @@ import Incident from "../models/Incident";
 import { uploadToCloudinary } from "../utils/imageUpload";
 
 class IncidentController {
-  // reporting a new safety incident
+  // create report
   async createIncident(req: AuthRequest, res: Response) {
     try {
       const { title, description, category, address, coordinates } = req.body;
       let imageUrls: string[] = [];
 
-      // if user sent a pic, upload it
+      // upload image
       if (req.file) {
         const url = await uploadToCloudinary(req.file.buffer);
         imageUrls.push(url);
@@ -44,7 +44,7 @@ class IncidentController {
     }
   }
 
-  // get incidents
+  // get all
   async getIncidents(req: Request, res: Response) {
     try {
       const pipeline: any[] = [];
@@ -88,7 +88,7 @@ class IncidentController {
     }
   }
 
-  // get incident by id
+  // single report
   async getIncidentById(req: Request, res: Response) {
     try {
       const incident = await Incident.aggregate([
@@ -131,7 +131,7 @@ class IncidentController {
     }
   }
 
-  // get user incidents
+  // my reports
   async getMyIncidents(req: AuthRequest, res: Response) {
     try {
       const incidents = await Incident.aggregate([

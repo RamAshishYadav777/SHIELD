@@ -6,9 +6,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { setConnected, setSocketId } from '@/store/slices/socketSlice';
 import { useAuth } from './useAuth';
+import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
-// keep audio and socket instances global so they don't break on re-renders
 let audioCtx: AudioContext | null = null;
 let globalSocket: Socket | null = null;
 
@@ -32,11 +32,16 @@ export const useSocket = () => {
   const { isConnected, socketId } = useSelector((state: RootState) => state.socket);
   const [socket, setSocket] = useState<Socket | null>(globalSocket);
 
+  // incrementing this forces the useEffect to re-run and create a fresh connection
+  const [reconnectTrigger, setReconnectTrigger] = useState(0);
+
+
+
+  // play siren sound when an emergency happens
   const playSiren = useCallback(async () => {
     const ctx = initAudio();
     if (!ctx) return;
 
-    // Resume context if suspended (Browser security requirement)
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch (e) { }
     }
@@ -60,7 +65,6 @@ export const useSocket = () => {
       osc.stop(ctx.currentTime + startTime + duration);
     };
 
-    // siren sound for alerts
     for (let i = 0; i < 4; i++) {
       playTone(950, i * 0.4, 0.2);
       playTone(750, i * 0.4 + 0.2, 0.2);
@@ -68,99 +72,122 @@ export const useSocket = () => {
   }, []);
 
   useEffect(() => {
-    // only connect if user is logged in
-    if (user && !globalSocket) {
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ||
-        (process.env.NEXT_PUBLIC_API_URL
-          ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
-          : 'http://localhost:5000');
-
-      // get token for auth
-      const userStr = localStorage.getItem('shield_user');
-      const userData = userStr ? JSON.parse(userStr) : null;
-      const token = userData?.accessToken || userData?.token;
-
-      const newSocket = io(socketUrl, {
-        auth: { token }, // sending token for handshake
-        reconnectionAttempts: 5,
-        reconnectionDelay: 2000,
-        transports: ['websocket']
-      });
-
-      globalSocket = newSocket;
-      setSocket(newSocket);
-
-      newSocket.on('connect', () => {
-        dispatch(setConnected(true));
-        dispatch(setSocketId(newSocket.id || null));
-        
-        // tell server which user this is (legacy, but keeping for room join)
-        newSocket.emit('join', user.id);
-      });
-
-      newSocket.on('connect_error', (err) => {
-        console.error('socket error:', err.message);
-      });
-
-      newSocket.on('disconnect', () => {
+    // if no user, kill the socket
+    if (!user) {
+      if (globalSocket) {
+        globalSocket.disconnect();
+        globalSocket = null;
+        setSocket(null);
         dispatch(setConnected(false));
         dispatch(setSocketId(null));
-      });
+      }
+      return;
     }
 
-    // listen for emergency alerts
-    const activeSocket = globalSocket;
-    if (activeSocket && user) {
-      const onAlert = (data: any) => {
-        // play sound and show alert if it's an SOS
-        if (data && data.type === 'SOS') {
-          const name = data.userName || data.user || 'Someone';
-          
-          // siren might fail if browser blocks audio, but toast should still show
-          playSiren().catch(e => console.warn('siren failed:', e));
-          
-          toast(`🚨 EMERGENCY: ${name} NEEDS HELP!`, {
-            id: 'sos-alert',
-            duration: 12000,
-            position: 'top-center',
-            style: {
-              background: 'linear-gradient(90deg, #b91c1c, #991b1b)',
-              color: '#fff',
-              fontWeight: '900',
-              borderRadius: '1.5rem',
-              padding: '12px 24px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-              fontSize: '11px',
-              letterSpacing: '0.1em'
-            },
-            icon: '📢'
-          });
-        }
-      };
-
-      activeSocket.off('system-alert');
-      activeSocket.on('system-alert', onAlert);
+    // if we already have a live connection, skip
+    if (globalSocket?.connected) {
+      return;
     }
 
-    // clean up if user logs out
-    if (!user && globalSocket) {
+    // disconnect any dead socket before making a new one
+    if (globalSocket && !globalSocket.connected) {
       globalSocket.disconnect();
       globalSocket = null;
       setSocket(null);
+    }
+
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ||
+      (process.env.NEXT_PUBLIC_API_URL
+        ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api$/, '')
+        : 'http://localhost:5000');
+
+    // cookies are sent automatically by the browser (withCredentials)
+    // the server reads the accessToken cookie from the handshake headers
+    const newSocket = io(socketUrl, {
+      withCredentials: true,
+      reconnectionAttempts: 3,    // don't retry forever — let token refresh handle it
+      reconnectionDelay: 2000,
+      autoConnect: true
+    });
+
+    globalSocket = newSocket;
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      dispatch(setConnected(true));
+      dispatch(setSocketId(newSocket.id || null));
+      newSocket.emit('join', user.id);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      if (err.message.includes('auth failed')) {
+        // Just log a warning since this is an expected token rotation event
+        console.warn('socket warning: token rotating or expired, initiating refresh sequence...');
+        
+        // token expired — clean up socket and trigger token refresh
+        newSocket.disconnect();
+        globalSocket = null;
+        setSocket(null);
+        dispatch(setConnected(false));
+        dispatch(setSocketId(null));
+
+        // refresh token instantly
+        api.get('/auth/refresh').then(() => {
+           console.log('socket token successfully refreshed');
+           setReconnectTrigger(prev => prev + 1);
+        }).catch(() => {
+           // trigger logout if it totally fails
+           if (typeof window !== 'undefined') {
+             window.dispatchEvent(new CustomEvent('shield-auth-expired'));
+           }
+        });
+      } else {
+        // only throw red errors for actual unexpected breaks
+        console.error('socket connection error:', err.message);
+      }
+    });
+
+    newSocket.on('disconnect', (reason) => {
       dispatch(setConnected(false));
       dispatch(setSocketId(null));
 
-      if (audioCtx) {
-        audioCtx.close().catch(() => { });
-        audioCtx = null;
+      // if server kicked us, try to refresh auth
+      if (reason === 'io server disconnect') {
+        globalSocket = null;
+        setSocket(null);
       }
-    }
+    });
+
+    // listen for emergency SOS alerts
+    newSocket.on('system-alert', (data: any) => {
+      if (data && data.type === 'SOS') {
+        const name = data.userName || data.user || 'Someone';
+        playSiren().catch(e => console.warn('siren failed:', e));
+
+        toast(`🚨 EMERGENCY: ${name} NEEDS HELP!`, {
+          id: 'sos-alert',
+          duration: 12000,
+          position: 'top-center',
+          style: {
+            background: 'linear-gradient(90deg, #b91c1c, #991b1b)',
+            color: '#fff',
+            fontWeight: '900',
+            borderRadius: '1.5rem',
+            padding: '12px 24px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            fontSize: '11px',
+            letterSpacing: '0.1em'
+          },
+          icon: '📢'
+        });
+      }
+    });
 
     return () => {
-      // keeping the socket open across re-renders
+      // only clean up if user logged out, not on reconnect
     };
-  }, [user, dispatch, playSiren]);
+  }, [user, dispatch, playSiren, reconnectTrigger]); // reconnectTrigger forces fresh connection after token refresh
 
   return { socket, isConnected, socketId, playSiren };
 };

@@ -56,14 +56,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setMounted(true);
   }, []);
 
-  // Handle redirection if confirmed Guest
+  // redirect if guest
   React.useEffect(() => {
     if (mounted && !loading && !user) {
       router.push('/');
     }
   }, [user, loading, router, mounted]);
 
-  // We define menu items here
+  // sidebar links
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Overview', href: '/dashboard' },
     { icon: <div className="w-5 h-5 relative"><Image src="/shield_v10.png" alt="Logo" width={20} height={20} className="object-contain" /></div>, label: 'Local Chat', href: '/dashboard/watch' },
@@ -73,12 +73,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: <Users size={20} />, label: 'Contacts', href: '/dashboard/contacts' },
   ];
 
-  // If we are definitely a Guest (mounted and no user), show nothing while redirecting
+  // hide while redirecting
   if (mounted && !loading && !user) return null;
 
   return (
     <div className="flex h-screen bg-bg-primary overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
+      {/* mobile backdrop */}
       {sidebarOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[9990]"
@@ -86,9 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* Sidebar */}
+      {/* sidebar */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 w-64 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass border-y-0 border-l-0 z-[9991] transition-transform duration-300
+        fixed lg:static inset-y-0 left-0 w-64 pt-16 md:pt-20 lg:pt-0 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass border-y-0 border-l-0 z-[9991] transition-transform duration-300 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <nav className="mt-8 flex-1">
@@ -119,14 +119,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-8 pt-40 relative">
+        {/* mobile responsive padding */}
+        <main className="flex-1 overflow-y-auto px-4 pb-4 pt-28 md:px-8 md:pb-8 md:pt-40 relative">
            <FlashAlerts />
            <SafeZoneDetector />
            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-accent-magenta/5 rounded-full blur-[100px] -z-10"></div>
            
-           {/* Only render children when mounted and user is confirmed */}
+           {/* show loader until ready */}
            {!mounted || (loading && !user) ? (
              <div className="h-full flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">

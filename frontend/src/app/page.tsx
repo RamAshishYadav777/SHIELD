@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import HomeBanner from "@/components/home/HomeBanner";
 import api from "@/lib/api";
 
-// ─── PARTICLE CANVAS (Performance Optimized) ──────────────────────────────────
+// particles
 const ParticleCanvas = memo(() => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -91,7 +91,7 @@ const ParticleCanvas = memo(() => {
 });
 ParticleCanvas.displayName = "ParticleCanvas";
 
-// ─── SCANLINE OVERLAY ──────────────────────────────────────────────────────────
+// overlay
 const ScanlineOverlay = memo(() => (
   <div
     className="absolute inset-0 z-0 pointer-events-none opacity-[0.02]"
@@ -103,7 +103,7 @@ const ScanlineOverlay = memo(() => (
 ));
 ScanlineOverlay.displayName = "ScanlineOverlay";
 
-// ─── FEATURE CARD ──────────────────────────────────────────────────────────────
+// feature card component
 const FeatureCard = memo(({ icon: Icon, title, description, delay = 0, colorClass }: any) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -138,7 +138,7 @@ const FeatureCard = memo(({ icon: Icon, title, description, delay = 0, colorClas
 ));
 FeatureCard.displayName = "FeatureCard";
 
-// ─── MAIN LANDING PAGE ────────────────────────────────────────────────────────
+// main page
 export default function Home() {
   const [liveStats, setLiveStats] = useState({ users: 0, incidents: 0, zones: 0 });
 
@@ -175,7 +175,7 @@ export default function Home() {
 
       <HomeBanner />
 
-      {/* ── KEY FEATURES ── */}
+      {/* key features */}
       <section id="features" className="py-16 md:py-40 px-6 relative z-10">
         <div className="absolute top-[20%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[150px] pointer-events-none" />
         <div className="absolute bottom-[20%] right-[-10%] w-[40%] h-[40%] bg-pink-500/5 rounded-full blur-[150px] pointer-events-none" />
@@ -203,7 +203,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── CALL TO ACTION ── */}
+      {/* cta */}
       <section className="py-24 md:py-40 px-6 relative overflow-hidden z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent-magenta/5" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-primary/5 rounded-full blur-[180px] pointer-events-none" />

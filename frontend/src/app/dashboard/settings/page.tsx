@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocationState } from '@/hooks/useLocation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,7 @@ type Tab = 'profile' | 'security' | 'danger';
 
 export default function SettingsPage() {
   const { user, refreshUser, logout } = useAuth();
+  const { hardReset }: any = useLocationState();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('profile');
 
@@ -216,6 +218,49 @@ export default function SettingsPage() {
                   {savingProfile ? 'Saving...' : <><Save size={16} /> Save Changes</>}
                 </Button>
               </form>
+            </Card>
+
+            <Card className="mt-8 p-8 border-yellow-500/20 bg-yellow-500/5">
+               <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20 shrink-0 text-yellow-500">
+                     <ShieldCheck size={24} />
+                  </div>
+                  <div className="flex-1">
+                     <h2 className="text-xl font-bold text-yellow-500 mb-1">Diagnostic Tools</h2>
+                     <p className="text-sm text-text-secondary leading-relaxed">
+                        If your map feels stuck or shows an old location, use these tools to force a browser hardware resync.
+                     </p>
+                     
+                     <div className="mt-6 flex flex-col md:flex-row gap-4">
+                        <Button 
+                          onClick={() => {
+                            hardReset();
+                            toast.success('Local Cache Purged.');
+                          }}
+                          className="bg-yellow-600 hover:bg-yellow-500 transition-all text-[10px] font-black uppercase tracking-widest px-6 h-12 border-none text-white shadow-lg shadow-yellow-600/20"
+                        >
+                           Local Hard Reset
+                        </Button>
+                        <Button 
+                          onClick={async () => {
+                            try {
+                              await api.put('/users/location', { coordinates: [0, 0] });
+                              toast.success('Cloud Location Wiped. Refreshing map...');
+                              setTimeout(() => window.location.reload(), 1500);
+                            } catch (e: any) {
+                              toast.error(e.response?.data?.message || 'Failed to wipe cloud data.');
+                            }
+                          }}
+                          className="bg-neutral-800 hover:bg-neutral-700 transition-all text-[10px] font-black uppercase tracking-widest px-6 h-12 border-none text-white outline-none ring-0"
+                        >
+                           Wipe Cloud Location
+                        </Button>
+                        <p className="text-[10px] text-text-secondary md:max-w-xs italic flex items-center">
+                           Note: This clears internal app state and requests a fresh hardware scan from your OS.
+                        </p>
+                     </div>
+                  </div>
+               </div>
             </Card>
           </motion.div>
         )}

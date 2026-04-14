@@ -9,13 +9,13 @@ import logger from "../utils/logger";
 import axios from "axios";
 
 class SOSController {
-  // when someone hits the sos button
+  // sos button hit
   async triggerSOS(req: AuthRequest, res: Response) {
     try {
       const { coordinates, message } = req.body;
       let address = req.body.address;
 
-      // get address from lat/lng if not provided
+      // get location
       if (!address || address === "Current Location" || address === "") {
         try {
           const [lng, lat] = coordinates;
@@ -35,7 +35,7 @@ class SOSController {
 
       address = address || "GPS Pinned Location";
 
-      // get user and their contacts
+      // get contacts
       const user = await (User.findById(req.user.id) as any).populate(
         "emergencyContacts",
       );
@@ -48,7 +48,7 @@ class SOSController {
 
       console.log(`[SOS] Saving location: ${address}`);
 
-      // save sos to db
+      // save
       const sos = await SOS.create({
         user: req.user.id,
         location: {
@@ -59,14 +59,14 @@ class SOSController {
         message,
       });
 
-      // send quick response to user so they dont wait
+      // fast response
       res.status(201).json({
         success: true,
         data: sos,
         message: "SOS triggered. We are notifying your contacts and admins",
       });
 
-      // run alerts in background so caller doesn't hang
+      // background alerts
       (async () => {
         try {
           const io = req.app.get("io");
@@ -74,7 +74,7 @@ class SOSController {
           
           logger.info(`Sending alerts to ${admins.length} admins and ${user.emergencyContacts.length} contacts`);
 
-          // blast socket alerts to everyone
+          // sockets
           if (io) {
             io.emit("system-alert", {
               type: "SOS",
@@ -95,7 +95,7 @@ class SOSController {
 
           const notifiedEmails = new Set<string>();
 
-          // alert admins via push and email
+          // admin alerts
           for (const admin of admins) {
             notificationController
               .sendNotification(admin._id.toString(), {
@@ -123,7 +123,7 @@ class SOSController {
             }
           }
 
-          // alert personal emergency contacts
+          // personal contacts alert
           for (const contact of user.emergencyContacts as any[]) {
             if (contact.email) {
               const contactEmail = contact.email.toLowerCase();
@@ -168,7 +168,7 @@ class SOSController {
     }
   }
 
-  // list all active sos alerts for admins
+  // active alerts
   async getActiveSOS(req: AuthRequest, res: Response) {
     try {
       const alerts = await SOS.aggregate([
@@ -205,7 +205,7 @@ class SOSController {
     }
   }
 
-  // get my own sos history
+  // my history
   async getSOSHistory(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.aggregate([
@@ -244,7 +244,7 @@ class SOSController {
     }
   }
 
-  // admin only: get all sos logs
+  // logs
   async getAllSOSAdmin(req: AuthRequest, res: Response) {
     try {
       const history = await SOS.aggregate([
@@ -281,7 +281,7 @@ class SOSController {
     }
   }
   
-  // mark alert as resolved
+  // resolve
   async resolveSOS(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
@@ -292,7 +292,7 @@ class SOSController {
           .json({ success: false, message: "sos record missing" });
       }
 
-      // only owner or admin can resolve
+      // auth check
       if (sos.user.toString() !== req.user.id && req.user.role !== "admin") {
         return res
           .status(401)

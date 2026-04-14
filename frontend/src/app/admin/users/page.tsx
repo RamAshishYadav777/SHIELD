@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, Shield, Mail, Phone, Clock,
-  ArrowLeft, CheckCircle2, Lock, Unlock, Trash2
+  ArrowLeft, CheckCircle2, Lock, Unlock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -36,7 +36,7 @@ export default function UserManagementPage() {
     fetchUsers();
   }, []);
 
-  // Handle direct link from SOS feed
+  // go to user from sos
   useEffect(() => {
     const targetId = searchParams.get('userId');
     if (targetId && users.length > 0) {
@@ -77,20 +77,6 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleAdminDeleteContact = async (userId: string, contactId: string) => {
-    try {
-      const res = await api.delete(`/admin/users/${userId}/contacts/${contactId}`);
-      if (res.data.success) {
-        toast.success('Contact removed');
-        setUsers(users.map(u => u._id === userId ? { ...u, emergencyContacts: res.data.data } : u));
-        if (selectedUserContacts?._id === userId) {
-            setSelectedUserContacts({ ...selectedUserContacts, emergencyContacts: res.data.data });
-        }
-      }
-    } catch (err) {
-      toast.error('Failed to remove contact');
-    }
-  };
 
   const filteredUsers = useMemo(() => users.filter(user => {
     const isSearchMatch =
@@ -103,7 +89,7 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      {/* Top Header */}
+      {/* head */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
         <div>
           <Link href="/admin" className="text-accent-magenta text-[11px] font-black uppercase tracking-widest flex items-center gap-2 mb-3 hover:opacity-70 transition-opacity">
@@ -119,7 +105,7 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* Roles & Search Box */}
+      {/* search and role */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary group-focus-within:text-accent-magenta transition-colors" size={20} />
@@ -149,13 +135,13 @@ export default function UserManagementPage() {
         </div>
       </div>
 
-      {/* Main Stats Card */}
+      {/* total count */}
       <div className="flex items-center gap-3 px-2 text-[10px] font-black uppercase tracking-widest text-neutral-600 italic">
          <Users size={14} />
          Total {filterRole}s Detected: {filteredUsers.length}
       </div>
 
-      {/* Simple Result Table */}
+      {/* user list */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-40 gap-4 opacity-40">
            <div className="w-12 h-12 border-4 border-accent-magenta/20 border-t-accent-magenta rounded-full animate-spin" />
@@ -248,7 +234,7 @@ export default function UserManagementPage() {
         </div>
       )}
 
-      {/* Security Note Card */}
+      {/* note */}
       <Card className="p-10 bg-white/[0.02] border border-white/5 rounded-[2.5rem] flex flex-col items-center text-center gap-4 transition-all hover:bg-white/[0.03] group">
         <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center text-accent-magenta shadow-xl group-hover:scale-110 transition-transform duration-500">
            <Shield size={28} />
@@ -258,7 +244,7 @@ export default function UserManagementPage() {
         </p>
       </Card>
 
-      {/* Contact Record Modal */}
+      {/* contacts */}
       {selectedUserContacts && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedUserContacts(null)} />
@@ -279,14 +265,10 @@ export default function UserManagementPage() {
                       <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-0.5">{contact.relation}</p>
                     </div>
                     <div className="text-right flex items-center gap-4">
-                      <p className="text-xs font-bold text-blue-400">{contact.phone}</p>
-                      <button 
-                        onClick={() => handleAdminDeleteContact(selectedUserContacts._id, contact._id)}
-                        className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors border-none"
-                        title="Remove Contact"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1.5 text-blue-400">
+                        <Mail size={12} className="opacity-70" />
+                        <p className="text-[11px] font-black lowercase tracking-tight">{contact.email || 'UNSET'}</p>
+                      </div>
                     </div>
                   </div>
                 ))

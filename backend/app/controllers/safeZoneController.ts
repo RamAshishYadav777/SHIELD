@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import SafeZone from "../models/SafeZone";
 
 class SafeZoneController {
-  // fetching all registered safe zones - global list
+  // get all hubs
   async getAllSafeZones(req: Request, res: Response) {
     try {
       const zones = await SafeZone.aggregate([{ $sort: { createdAt: -1 } }]);
@@ -17,12 +17,12 @@ class SafeZoneController {
     }
   }
 
-  // fetching safe spots like police stations or hospitals nearby
+  // nearby hubs
   async getNearbySafeZones(req: Request, res: Response) {
     try {
       const { lng, lat, distance = 5000 } = req.query;
 
-      // need your spot to find nearby ones
+      // check coords
       if (!lng || !lat) {
         return res
           .status(400)

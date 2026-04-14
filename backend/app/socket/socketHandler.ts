@@ -41,8 +41,12 @@ export const initSocket = (io: Server) => {
       // store user in socket so we can use it in events
       socket.user = user;
       next();
-    } catch (err) {
-      logger.error('socket auth error:', err);
+    } catch (err: any) {
+      if (err.name === 'TokenExpiredError') {
+         logger.warn(`socket auth warning: token expired for a reconnecting client`);
+      } else {
+         logger.error('socket auth error:', err.message || err);
+      }
       next(new Error('auth failed: invalid token'));
     }
   });

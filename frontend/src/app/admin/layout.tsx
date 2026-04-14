@@ -96,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </AnimatePresence>
 
       <aside className={`
-        fixed lg:static inset-y-0 left-0 w-72 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass z-[60] transition-transform duration-500 flex flex-col overflow-hidden
+        fixed lg:static inset-y-0 left-0 w-72 pt-16 md:pt-20 lg:pt-0 lg:mt-28 lg:mb-4 lg:ml-4 lg:rounded-[2.5rem] glass z-[60] transition-transform duration-500 flex flex-col overflow-hidden
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="pt-4 pb-3 px-8 flex flex-col items-center shrink-0 border-b border-white/5 bg-white/[0.01]">
@@ -142,9 +142,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* main content */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-        <main className="flex-1 overflow-y-auto p-8 pt-40 h-full relative scroll-smooth selection:bg-accent-magenta/30 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pt-28 md:pt-40 h-full relative scroll-smooth selection:bg-accent-magenta/30 custom-scrollbar">
            <AnimatePresence>
              <motion.div
                key={pathname}

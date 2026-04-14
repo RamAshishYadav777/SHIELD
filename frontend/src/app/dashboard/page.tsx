@@ -203,8 +203,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300 pb-20">
       
-      {/* safety score card */}
-      <Card className="p-8 border-white/5 bg-[#120B16] bg-gradient-to-r from-[#120B16] to-[#1D1024] rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-8 h-full shadow-2xl overflow-hidden relative border-none">
+      {/* mobile responsive safety score card */}
+      <Card className="p-6 md:p-8 border-white/5 bg-[#120B16] bg-gradient-to-r from-[#120B16] to-[#1D1024] rounded-[2.0rem] md:rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8 h-full shadow-2xl overflow-hidden relative border-none">
         
         <div className="flex items-center gap-8 w-full">
           <div className="relative flex items-center justify-center shrink-0">
@@ -241,8 +241,8 @@ export default function DashboardPage() {
                   <Clock size={12} /> {currentTime}
                 </span>
              </div>
-             <h2 className="text-3xl font-bold flex items-center gap-3 text-white">
-                {prediction ? prediction.riskLevel : 'Analyzing'} Status <Zap className={`text-accent-orange ${prediction ? 'fill-accent-orange' : 'animate-pulse'}`} size={22} />
+             <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-white">
+                {prediction ? prediction.riskLevel : 'Analyzing'} Status <Zap className={`text-accent-orange ${prediction ? 'fill-accent-orange' : 'animate-pulse'} w-5 h-5 md:w-6 md:h-6`} />
              </h2>
              <p className={`text-sm font-medium max-w-xl italic ${prediction ? 'text-text-secondary' : 'text-text-secondary/50 animate-pulse'}`}>
                 "{prediction ? prediction.recommendation : 'Scanning for safety threats...'}"
@@ -258,8 +258,8 @@ export default function DashboardPage() {
         </button>
       </Card>
 
-      {/* big sos button card */}
-      <Card className="p-10 md:p-14 border-white/5 bg-[#0F0C13] rounded-[3rem] overflow-hidden relative shadow-2xl flex flex-col md:flex-row items-center justify-between gap-12 border-none">
+      {/* mobile responsive big sos button card */}
+      <Card className="p-6 md:p-14 border-white/5 bg-[#0F0C13] rounded-[2.0rem] md:rounded-[3rem] overflow-hidden relative shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 border-none">
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D10B66]/10 blur-[130px] rounded-full pointer-events-none"></div>
 
         <div className="space-y-8 relative z-10 max-w-xl flex-1">
@@ -298,19 +298,20 @@ export default function DashboardPage() {
                
                <button 
                  onClick={handleSOS}
-                 className="relative w-64 h-64 md:w-80 md:h-80 rounded-full shadow-[0_0_80px_rgba(209,11,102,0.6)] flex flex-col items-center justify-center active:scale-95 transition-all outline-none cursor-pointer group animate-[sosBreath_3s_ease-in-out_infinite] border-[8px] border-[#1D0C14] bg-gradient-to-br from-[#FF1A66] to-[#af0854]"
+                 // fix sos button size for mobile screens
+                 className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 rounded-full shadow-[0_0_80px_rgba(209,11,102,0.6)] flex flex-col items-center justify-center active:scale-95 transition-all outline-none cursor-pointer group animate-[sosBreath_3s_ease-in-out_infinite] border-[8px] border-[#1D0C14] bg-gradient-to-br from-[#FF1A66] to-[#af0854]"
                >
                  <div className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/10 transition-colors pointer-events-none" />
-                 <AlertTriangle size={72} className="text-white mb-2 stroke-[2.5] group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-500 drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]" />
-                 <span className="text-white font-black text-4xl tracking-[0.25em] drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]">SOS</span>
+                 <AlertTriangle size={56} className="text-white mb-2 stroke-[2.5] group-hover:scale-110 group-hover:-translate-y-2 transition-transform duration-500 drop-shadow-[0_0_20px_rgba(255,255,255,0.6)] md:w-[72px] md:h-[72px]" />
+                 <span className="text-white font-black text-3xl md:text-4xl tracking-[0.25em] drop-shadow-[0_0_20px_rgba(255,255,255,0.6)]">SOS</span>
                </button>
             </div>
         </div>
       </Card>
 
-      {/* my incident reports */}
+      {/* mobile responsive incident reports */}
       {myReports.length > 0 && (
-        <Card className="p-8 border-white/5 bg-[#0F0C13] rounded-[2.5rem] shadow-2xl border-none">
+        <Card className="p-6 md:p-8 border-white/5 bg-[#0F0C13] rounded-[2.0rem] md:rounded-[2.5rem] shadow-2xl border-none">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold flex items-center gap-3 text-white italic transition-all group">
               <Shield size={24} className="text-accent-orange group-hover:rotate-12 duration-500" /> 
@@ -356,11 +357,11 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* contact list and nearby hubs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* mobile responsive contact list and nearby hubs */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         
         {/* Contact List */}
-         <Card className="p-8 bg-neutral-900 border-white/5 rounded-[2.5rem] shadow-2xl border-none">
+         <Card className="p-6 md:p-8 bg-neutral-900 border-white/5 rounded-[2.0rem] md:rounded-[2.5rem] shadow-2xl border-none">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-3 text-white">
                <Users size={24} className="text-accent-orange" /> My Circle
             </h3>
@@ -395,7 +396,7 @@ export default function DashboardPage() {
          </Card>
 
          {/* Nearby Safe Hubs */}
-         <Card className="p-8 bg-neutral-900 border-white/5 rounded-[2.5rem] shadow-2xl border-none">
+         <Card className="p-6 md:p-8 bg-neutral-900 border-white/5 rounded-[2.0rem] md:rounded-[2.5rem] shadow-2xl border-none">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-3 text-white">
                <Target size={24} className="text-green-500" /> Nearby Hubs
             </h3>
