@@ -294,7 +294,7 @@ class AuthController {
       await user.save();
 
       const frontendUrl = process.env.FRONTEND_URL || 'https://shield-gilt.vercel.app';
-      const resetUrl = `${frontendUrl}/reset-password/${token}`;
+      const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
       const html = `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #1a1a1a; border-radius: 12px; background-color: #000; color: #fff;">
@@ -328,7 +328,9 @@ class AuthController {
   // update password using the reset token
   async resetPassword(req: Request, res: Response) {
     try {
-      const token = req.params.token as string;
+      const token = req.query.token as string;
+      if (!token) return res.status(400).json({ success: false, message: 'missing password reset token' });
+
       const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
       const user = await User.findOne({
         resetPasswordToken,
