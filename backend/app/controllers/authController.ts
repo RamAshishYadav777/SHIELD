@@ -296,10 +296,27 @@ class AuthController {
       const frontendUrl = process.env.FRONTEND_URL || 'https://shield-gilt.vercel.app';
       const resetUrl = `${frontendUrl}/reset-password/${token}`;
 
+      const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #1a1a1a; border-radius: 12px; background-color: #000; color: #fff;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="https://shield-gilt.vercel.app/shield_v10.png" alt="SHIELD Logo" style="width: 60px; height: 60px;" />
+            <h1 style="color: #fff; text-align: center; font-size: 24px; font-weight: 900; letter-spacing: 2px; margin-top: 20px; text-transform: uppercase;">Password Reset</h1>
+          </div>
+          <p style="color: #ccc; font-size: 15px; line-height: 1.6; text-align: center;">We received a request to reset the password for your SHIELD account. Click the button below to establish a new secure password.</p>
+          <div style="text-align: center; margin: 40px 0;">
+            <a href="${resetUrl}" style="display: inline-block; padding: 16px 36px; background: linear-gradient(90deg, #f4821f, #e83a8b); color: #fff; text-decoration: none; font-size: 14px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; border-radius: 8px; box-shadow: 0 10px 30px rgba(244,130,31,0.3);">
+              Reset Password
+            </a>
+          </div>
+          <p style="color: #888; font-size: 12px; text-align: center;">This link will securely expire in 10 minutes.<br/>If you did not make this request, please safely ignore this email.</p>
+        </div>
+      `;
+
       await sendEmail({
         email: user.email,
-        subject: 'Password Reset',
-        message: `Reset your password here: ${resetUrl}`
+        subject: 'SHIELD - Password Reset Request',
+        message: `Reset your password here: ${resetUrl}`,
+        html
       });
 
       res.status(200).json({ success: true, message: 'reset link sent to email' });
