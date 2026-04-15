@@ -18,4 +18,5 @@ dist/
 # Environment files
 .env
 .env.*
+!.env.example
 
